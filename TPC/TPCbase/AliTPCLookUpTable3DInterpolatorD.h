@@ -42,6 +42,7 @@ public:
 	void GetValue(Double_t r, Double_t phi, Double_t z, Double_t &rValue, Double_t &phiValue, Double_t &zValue);
   void GetValue(Double_t r, Double_t phi, Double_t z, Float_t &rValue, Float_t &phiValue, Float_t &zValue);
 	void CopyFromMatricesToInterpolator();
+	void CopyFromMatricesToInterpolator(Int_t iZ); // copy only iZ
 
 private:
 	Int_t fOrder; ///< order of interpolation

@@ -72,6 +72,10 @@ public:
   void SetCorrectionType(Int_t correctionType) {
     fCorrectionType = correctionType;
   }
+  
+  void SetIntegrationStrategy(Int_t integrationStrategy) {
+    fIntegrationStrategy = integrationStrategy;
+  }
 
   TH2F *CreateHistogramDistDRInXY(Float_t z, Int_t nx, Int_t ny);
 
@@ -92,6 +96,19 @@ public:
   enum CorrectionType {
     kRegularInterpolator = 0,     ///< use interpolation with regular interpolator for correction look up table
     kIrregularInterpolator = 1,   ///< use irregular interpolator for correction look up table
+  };
+
+  enum IntegrationStrategy  {
+    kNaive = 0,
+    kOpt   = 1,
+  };
+  
+  struct Profile {
+	Double_t poissonSolverTime;
+	Double_t electricFieldTime;
+	Double_t localDistortionTime;
+	Double_t globalDistortionTime;
+	Int_t iteration;
   };
 
   void SetInputSpaceCharge(TH3 *hisSpaceCharge3D, Double_t norm);
@@ -238,6 +255,7 @@ public:
   Float_t GetPotential(Float_t r, Float_t phi, Float_t z);
   void GetElectricFieldCyl(const Float_t x[], Short_t roc, Double_t dx[]);
   void Init();
+  Profile GetProfile() { return myProfile; }
 
 private:
   static const Int_t kNMaxPhi = 360;
@@ -261,8 +279,10 @@ private:
   Int_t fCorrectionType; ///> use regular or irregular grid method
   Int_t fInterpolationOrder; ///>  Order of interpolation (1-> tri linear, 2->Lagrange interpolation order 2, 3> cubic spline)
   Int_t fIrregularGridSize; ///>  Size of irregular grid cubes for interpolation (min 3)
-  Int_t fRBFKernelType; ///>  RBF kernel type
+  Int_t fRBFKernelType; ///>  RBF kernel type 
+  Int_t fIntegrationStrategy;
 
+  Profile myProfile; 
 
   TMatrixD *fMatrixIntDistDrEzA[kNMaxPhi];  //[kNMaxPhi] Matrices for storing Global distortion  \f$ R \f$ direction for Side A
   TMatrixD *fMatrixIntDistDPhiREzA[kNMaxPhi]; //[kNMaxPhi] Matrices for storing Global \f$ \phi R \f$ Distortion for Side A
@@ -341,21 +361,21 @@ private:
   TH3 *fHistogram3DSpaceCharge;  //-> Histogram with the input space charge histogram - used as an optional input
   TH3 *fHistogram3DSpaceChargeA;  //-> Histogram with the input space charge histogram - used as an optional input side A
   TH3 *fHistogram3DSpaceChargeC;  //-> Histogram with the input space charge histogram - used as an optional input side C
-  TF1 *fFormulaBoundaryIFCA; //-> function define boundary values for IFC side A V(z) assuming symmetry in phi and r.
-  TF1 *fFormulaBoundaryIFCC; //-> function define boundary values for IFC side C V(z) assuming symmetry in phi and r.
-  TF1 *fFormulaBoundaryOFCA; //-> function define boundary values for OFC side A V(z) assuming symmetry in phi and r.
-  TF1 *fFormulaBoundaryOFCC; ///<- function define boundary values for IFC side C V(z) assuming symmetry in phi and r.
-  TF1 *fFormulaBoundaryROCA; ///<- function define boundary values for ROC side A V(r) assuming symmetry in phi and z.
-  TF1 *fFormulaBoundaryROCC; ///<- function define boundary values for ROC side V V(t) assuming symmetry in phi and z.
-  TF1 *fFormulaBoundaryCE; ///<- function define boundary values for CE V(z) assuming symmetry in phi and z.
+  TF1 *fFormulaBoundaryIFCA = NULL; //-> function define boundary values for IFC side A V(z) assuming symmetry in phi and r.
+  TF1 *fFormulaBoundaryIFCC = NULL; //-> function define boundary values for IFC side C V(z) assuming symmetry in phi and r.
+  TF1 *fFormulaBoundaryOFCA = NULL; //-> function define boundary values for OFC side A V(z) assuming symmetry in phi and r.
+  TF1 *fFormulaBoundaryOFCC = NULL; ///<- function define boundary values for IFC side C V(z) assuming symmetry in phi and r.
+  TF1 *fFormulaBoundaryROCA = NULL; ///<- function define boundary values for ROC side A V(r) assuming symmetry in phi and z.
+  TF1 *fFormulaBoundaryROCC = NULL; ///<- function define boundary values for ROC side V V(t) assuming symmetry in phi and z.
+  TF1 *fFormulaBoundaryCE = NULL; ///<- function define boundary values for CE V(z) assuming symmetry in phi and z.
 
-  TFormula *fFormulaPotentialV; ///<- potential V(r,rho,z) function
-  TFormula *fFormulaChargeRho;  ///<- charge density Rho(r,rho,z) function
+  TFormula *fFormulaPotentialV = NULL; ///<- potential V(r,rho,z) function
+  TFormula *fFormulaChargeRho = NULL;  ///<- charge density Rho(r,rho,z) function
 
   // analytic formula for E
-  TFormula *fFormulaEPhi; ///<- ePhi EPhi(r,rho,z) electric field (phi) function
-  TFormula *fFormulaEr; ///<- er Er(r,rho,z) electric field (r) function
-  TFormula *fFormulaEz; ///<- ez Ez(r,rho,z) electric field (z) function
+  TFormula *fFormulaEPhi = NULL; ///<- ePhi EPhi(r,rho,z) electric field (phi) function
+  TFormula *fFormulaEr = NULL; ///<- er Er(r,rho,z) electric field (r) function
+  TFormula *fFormulaEz = NULL; ///<- ez Ez(r,rho,z) electric field (z) function
 
 
 
@@ -393,6 +413,9 @@ private:
     TMatrixD **matricesZIrregular, const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice,
     const Double_t *rList,
     const Double_t *phiList, const Double_t *zList);
+
+  void IntegrateDistCorrDriftLineDzWithLookUp ( AliTPCLookUpTable3DInterpolatorD *lookupLocalDist, TMatrixD** matricesGDistDrDz,  	TMatrixD** matricesGDistDphiRDz, 	TMatrixD** matricesGDistDz, 	AliTPCLookUpTable3DInterpolatorD *lookupLocalCorr, 	TMatrixD** matricesGCorrDrDz,  	TMatrixD** matricesGCorrDphiRDz, TMatrixD** matricesGCorrDz, const Int_t rrow,  	const Int_t zcolumn, 	const Int_t phiSlice,	 Double_t *rlist, Double_t *philist,  Double_t *zlist );
+
 
   void FillLookUpTable(AliTPCLookUpTable3DInterpolatorD *lookupGlobal, TMatrixD **lookupRDz, TMatrixD **lookupPhiRDz,
                        TMatrixD **lookupDz, const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice,
