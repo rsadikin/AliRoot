@@ -51,7 +51,7 @@ ClassImp(AliTPCSpaceCharge3DDriftLine)
 AliTPCSpaceCharge3DDriftLine::AliTPCSpaceCharge3DDriftLine()
   : AliTPCCorrection(), fC0(0.), fC1(0.), fCorrectionFactor(1.), fInitLookUp(kFALSE), fInterpolationOrder(5),
     fIrregularGridSize(3), fRBFKernelType(0), fNRRows(129), fNZColumns(129), fNPhiSlices(180),
-    fCorrectionType(0) {
+    fCorrectionType(0), fIntegrationStrategy(0) {
   InitAllocateMemory();
 }
 /// Construction for AliTPCSpaceCharge3DDriftLine class
@@ -67,7 +67,7 @@ AliTPCSpaceCharge3DDriftLine::AliTPCSpaceCharge3DDriftLine(const char *name, con
   : AliTPCCorrection(name, title), fC0(0.), fC1(0.), fCorrectionFactor(1.), fInitLookUp(kFALSE),
     fInterpolationOrder(5),
     fIrregularGridSize(3), fRBFKernelType(0), fNRRows(129), fNZColumns(129), fNPhiSlices(144),
-    fCorrectionType(0) {
+    fCorrectionType(0), fIntegrationStrategy(0) {
   InitAllocateMemory();
 }
 /// Construction for AliTPCSpaceCharge3DDriftLine class
@@ -102,7 +102,7 @@ AliTPCSpaceCharge3DDriftLine::AliTPCSpaceCharge3DDriftLine(
   const char *name, const char *title, Int_t nRRow, Int_t nZColumn, Int_t nPhiSlice, Int_t interpolationOrder,
   Int_t irregularGridSize, Int_t rbfKernelType)
   : AliTPCCorrection(name, title), fC0(0.), fC1(0.), fCorrectionFactor(1.), fInitLookUp(kFALSE),
-    fCorrectionType(0) {
+    fCorrectionType(0),fIntegrationStrategy(0) {
   fInterpolationOrder = interpolationOrder;
   fIrregularGridSize = irregularGridSize;
 
@@ -318,21 +318,6 @@ void AliTPCSpaceCharge3DDriftLine::InitAllocateMemory() {
 
   fLookupIntCorrIrregularA->SetKernelType(fRBFKernelType);
   fLookupIntCorrIrregularC->SetKernelType(fRBFKernelType);
-
-  fFormulaBoundaryIFCA = NULL;
-  fFormulaBoundaryIFCC = NULL;
-  fFormulaBoundaryOFCA = NULL;
-  fFormulaBoundaryOFCC = NULL;
-  fFormulaBoundaryROCA = NULL;
-  fFormulaBoundaryROCC = NULL;
-  fFormulaBoundaryCE = NULL;
-
-  fFormulaPotentialV = NULL;
-  fFormulaChargeRho = NULL;
-
- fFormulaEPhi = NULL;
-  fFormulaEr = NULL;
-  fFormulaEz = NULL;
 }
 /// Destruction for AliTPCSpaceCharge3DDriftLine
 /// Deallocate memory for lookup table and charge distribution
@@ -700,12 +685,17 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
 
 
       AliInfo(Form("Step 1: Poisson solver: %f\n", w.CpuTime()));
+      myProfile.poissonSolverTime = w.CpuTime();
+      myProfile.iteration = fPoissonSolver->fIterations;
+
+
       w.Start();
       ElectricField(matricesV,
                     matricesEr, matricesEPhi, matricesEz, nRRow, nZColumn, phiSlice,
                     gridSizeR, gridSizePhi, gridSizeZ, symmetry, fgkIFCRadius);
       w.Stop();
 
+      myProfile.electricFieldTime = w.CpuTime();
       AliInfo(Form("Step 2: Electric Field Calculation: %f\n", w.CpuTime()));
       w.Start();
       LocalDistCorrDz(matricesEr, matricesEPhi, matricesEz,
@@ -713,6 +703,7 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
                       matricesCorrDrDz, matricesCorrDPhiRDz, matricesCorrDz,
                       nRRow, nZColumn, phiSlice, gridSizeZ, ezField);
       w.Stop();
+      myProfile.localDistortionTime = w.CpuTime();
 
       // copy to interpolator
       if (side == 0) {
@@ -729,19 +720,28 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
 
       AliInfo(Form("Step 3: Local distortion and correction: %f\n", w.CpuTime()));
       w.Start();
-
-      IntegrateDistCorrDriftLineDz(
-        lookupLocalDist,
-        matricesGDistDrDz, matricesGDistDPhiRDz, matricesGDistDz,
-        lookupLocalCorr,
-        matricesGCorrDrDz, matricesGCorrDPhiRDz, matricesGCorrDz,
-        matricesIrregularDrDz, matricesIrregularDPhiRDz, matricesIrregularDz,
-        matricesRIrregular, matricesPhiIrregular, matricesZIrregular,
-        nRRow, nZColumn, phiSlice, rList, phiList, zList
-      );
+      if (fIntegrationStrategy == kNaive)
+	IntegrateDistCorrDriftLineDz(
+          lookupLocalDist,
+          matricesGDistDrDz, matricesGDistDPhiRDz, matricesGDistDz,
+          lookupLocalCorr,
+          matricesGCorrDrDz, matricesGCorrDPhiRDz, matricesGCorrDz,
+          matricesIrregularDrDz, matricesIrregularDPhiRDz, matricesIrregularDz,
+          matricesRIrregular, matricesPhiIrregular, matricesZIrregular,
+          nRRow, nZColumn, phiSlice, rList, phiList, zList
+        );
+      else
+	IntegrateDistCorrDriftLineDzWithLookUp ( 
+          lookupLocalDist,
+          matricesGDistDrDz, matricesGDistDPhiRDz, matricesGDistDz,
+          lookupLocalCorr,
+          matricesGCorrDrDz, matricesGCorrDPhiRDz, matricesGCorrDz,
+          nRRow, nZColumn, phiSlice, rList, phiList, zList
+	);
 
       w.Stop();
       AliInfo(Form("Step 4: Global correction/distortion: %f\n", w.CpuTime()));
+      myProfile.globalDistortionTime = w.CpuTime();
       w.Start();
 
       //// copy to 1D interpolator /////
@@ -1902,6 +1902,7 @@ void AliTPCSpaceCharge3DDriftLine::IntegrateDistCorrDriftLineDz(
     }
   }
 }
+
 /// follow the drift for exact function
 /// 
 /// \param intDrDzF 
@@ -2134,6 +2135,292 @@ void AliTPCSpaceCharge3DDriftLine::IntegrateDistCorrDriftLineDz(
     }
   }
 }
+
+/// See explanation at LocalDistCorrDz
+///
+///
+/// \param matricesEr TMatrixD**  electric field for \f$r\f$ component
+///	\param matricesEPhi TMatrixD** electric field for \f$\phi\f$ component
+///	\param matricesEz TMatrixD** electric field for \f$z\f$ component
+///	\param matricesCorrDrDz TMatrixD** local correction \f$\hat{\delta}_{r}\f$
+///	\param matricesCorrDPhiRDz TMatrixD** local correction \f$r \hat{\delta}_{\phi}\f$
+///	\param matricesCorrDz TMatrixD** local correction \f$ \hat{\delta}_{z}\f$
+/// \param nRRow Int_t Number of nRRow in r-direction
+/// \param nZColumn Int_t Number of nZColumn in z-direction
+/// \param phiSlice Int_t Number of phi slices in \f$ phi \f$ direction
+///	\param gridSizeZ const Float_t grid size in z direction
+/// \param ezField const Double_t ezField calculate from the invoking operation
+///
+/// \pre matricesEr, matricesEPhi, matrices Ez are provided
+/// \post Local correction are computed according simplified Langevin equation
+/// ~~~
+/// matricesCorrDz,matricesCorrDPhiRDz,matricesDistDz
+/// ~~~
+void AliTPCSpaceCharge3DDriftLine::IntegrateDistCorrDriftLineDzWithLookUp ( AliTPCLookUpTable3DInterpolatorD *lookupLocalDist, TMatrixD** matricesGDistDrDz,  	TMatrixD** matricesGDistDPhiRDz, 	TMatrixD** matricesGDistDz, 	AliTPCLookUpTable3DInterpolatorD *lookupLocalCorr, 	TMatrixD** matricesGCorrDrDz,  	TMatrixD** matricesGCorrDPhiRDz, TMatrixD** matricesGCorrDz, const Int_t nRRow,  	const Int_t nZColumn, 	const Int_t phiSlice,	Double_t *rList,	 Double_t *phiList,  Double_t *zList ) {
+
+  Float_t drDist, dRPhi, dzDist, ddR, ddRPhi, ddZ;
+  Float_t radius0, phi0, z0, radius, phi, z, radiusCorrection;
+  radiusCorrection = 0.0;
+  radius = 0.0;
+  TMatrixD *mDistDrDz;
+  TMatrixD *mDistDPhiRDz;
+  TMatrixD *mDistDz;
+  TMatrixD *mCorrDrDz;
+  TMatrixD *mCorrDPhiRDz;
+  TMatrixD *mCorrDz;
+  Int_t j = nZColumn - 1;
+
+
+  // allocate look up for temporal
+  AliTPCLookUpTable3DInterpolatorD *lookupGlobalDistTemp =
+    new AliTPCLookUpTable3DInterpolatorD(
+      nRRow, matricesGDistDrDz, rList, phiSlice, matricesGDistDPhiRDz, phiList, nZColumn, matricesGDistDz,
+      zList, 2);
+  
+
+  z0 = zList[j];
+
+  for (Int_t m = 0; m < phiSlice; m++) {
+    phi0 = phiList[m];
+
+    mDistDrDz = matricesGDistDrDz[m];
+    mDistDPhiRDz = matricesGDistDPhiRDz[m];
+    mDistDz = matricesGDistDz[m];
+
+    //
+    mCorrDrDz = matricesGCorrDrDz[m];
+    mCorrDPhiRDz = matricesGCorrDPhiRDz[m];
+    mCorrDz = matricesGCorrDz[m];
+
+
+    for (Int_t i = 0; i < nRRow; i++) {
+      // do from j to 0
+      // follow the drift
+      radius0 = rList[i];
+      phi = phi0;
+      radius = radius0;
+
+      drDist = 0.0;
+      dRPhi = 0.0;
+      dzDist = 0.0;
+      ddRPhi = 0.0;
+
+      ///
+      (*mDistDrDz)(i, j) = drDist;
+      (*mDistDPhiRDz)(i, j) = dRPhi;
+      (*mDistDz)(i, j) = dzDist;
+    }
+  }
+
+  // from j one column near end cap
+  for (j = nZColumn - 2; j >= 0; j--) {
+
+    z0 = zList[j];
+    for (Int_t m = 0; m < phiSlice; m++) {
+      phi0 = phiList[m];
+
+      mDistDrDz = matricesGDistDrDz[m];
+      mDistDPhiRDz = matricesGDistDPhiRDz[m];
+      mDistDz = matricesGDistDz[m];
+
+      //
+      mCorrDrDz = matricesGCorrDrDz[m];
+      mCorrDPhiRDz = matricesGCorrDPhiRDz[m];
+      mCorrDz = matricesGCorrDz[m];
+
+
+
+      for (Int_t i = 0; i < nRRow; i++) {
+
+	// do from j to 0
+	// follow the drift
+	radius0 = rList[i];
+	phi = phi0;
+	radius = radius0;
+	z = z0;				
+		
+	lookupLocalDist->GetValue(radius,phi,z,ddR,ddRPhi,ddZ);	
+				
+	phi += ddRPhi/radius;
+	radius = radius0 + ddR;
+	z = zList[j+1] + ddZ;
+
+	if (j < nZColumn - 2) {
+		lookupGlobalDistTemp->GetValue(radius,phi,z,drDist,dRPhi,dzDist);						
+	}
+				
+	(*mDistDrDz)(i,j) = drDist + ddR;
+	(*mDistDPhiRDz)(i,j) = dRPhi + ddRPhi;
+	(*mDistDz)(i,j) = dzDist  + ddZ;
+	
+	if (j > 0) {	
+		(*mDistDrDz)(i,j) = drDist + ddR;
+		(*mDistDPhiRDz)(i,j) = dRPhi + ddRPhi;
+		(*mDistDz)(i,j) = dzDist  + ddZ;
+	}
+				// copy to 1D for being able to interpolate at next step
+
+
+
+        // put the radius to the original value
+        if (j == nZColumn - 2) radiusCorrection = radius0;
+
+        // get global correction from j+1
+        drDist = (*mCorrDrDz)(i, j + 1);
+        dRPhi = (*mCorrDPhiRDz)(i, j + 1);
+        dzDist = (*mCorrDz)(i, j + 1);
+
+        radiusCorrection = radius0 + drDist;
+        phi = phi0 + dRPhi / radiusCorrection;
+        z = zList[j + 1] + dzDist;
+
+        while (phi < 0.0) phi = TMath::TwoPi() + phi;
+        while (phi > TMath::TwoPi()) phi = phi - TMath::TwoPi();
+
+        lookupLocalCorr->GetValue(radiusCorrection, phi, z, ddR, ddRPhi, ddZ);
+
+        drDist += ddR;
+        dzDist += ddZ;
+        dRPhi += ddRPhi;
+
+        (*mCorrDrDz)(i, j) = drDist;
+        (*mCorrDPhiRDz)(i, j) = dRPhi;
+        (*mCorrDz)(i, j) = dzDist;
+
+      }
+    }
+
+    lookupGlobalDistTemp->CopyFromMatricesToInterpolator(j);
+    if (j > 0) lookupGlobalDistTemp->CopyFromMatricesToInterpolator(j-1);
+  }
+  delete lookupGlobalDistTemp;
+}
+/**
+void AliTPCSpaceCharge3DDriftLine::IntegrateDistCorrDriftLineDzWithLookUp ( AliTPCLookUpTable3DInterpolatorD *lookupLocalDist, TMatrixD** matricesGDistDrDz,  	TMatrixD** matricesGDistDphiRDz, 	TMatrixD** matricesGDistDz, 	AliTPCLookUpTable3DInterpolatorD *lookupLocalCorr, 	TMatrixD** matricesGCorrDrDz,  	TMatrixD** matricesGCorrDphiRDz, TMatrixD** matricesGCorrDz, const Int_t rrow,  	const Int_t zcolumn, 	const Int_t phiSlice,	Double_t *rlist,	 Double_t *philist,  Double_t *zlist ) {
+	Float_t dr,dphir,dz,ddr,ddrphi,ddz;
+	Float_t radius0, phi0, z0, radius,phi,z;
+	
+	radius   = 0.0;
+	
+	TMatrixD * mDistDrDz;
+	TMatrixD * mDistDphiRDz;
+	TMatrixD * mDistDz;
+	
+	TMatrixD * mCorrDrDz;
+	TMatrixD * mCorrDphiRDz;
+	TMatrixD * mCorrDz;
+	
+
+	dr = 0.0;
+	dz = 0.0;
+	dphir = 0.0;
+
+
+
+  	// allocate look up for temporal
+	AliTPCLookUpTable3DInterpolatorD *lookupGlobalDistTemp =
+	    new AliTPCLookUpTable3DInterpolatorD(
+	      rrow, matricesGDistDrDz, rlist, phiSlice, matricesGDistDphiRDz, philist, zcolumn, matricesGDistDz,
+	      zlist, 2);
+		
+	for (Int_t j=zcolumn-2; j >= 0;j--) {
+		z0 = zlist[j] ;		
+			
+	
+		for ( Int_t m = 0 ; m < phiSlice ; m++ ) {
+			phi0 = philist[m];
+				
+			mCorrDrDz = matricesGCorrDrDz[m];
+			mCorrDphiRDz = matricesGCorrDphiRDz[m];
+			mCorrDz = matricesGCorrDz[m];;
+			
+			for (Int_t i=0; i< rrow;i++)  {
+				// do from j to 0
+				// follow the drift
+				radius0 = rlist[i];
+				//if (j == zcolumn-2) radius = radius0;
+				
+				dr = (*mCorrDrDz)(i,j+1);
+				dphir = (*mCorrDphiRDz)(i,j+1);
+				dz = (*mCorrDz)(i,j+1) ;
+				
+				
+				radius = radius0 + dr;		
+				phi = phi0 + dphir/radius;					
+				z = zlist[j + 1] + dz;
+				
+					
+					
+				lookupLocalCorr->GetValue(radius,phi,z,ddr,ddrphi,ddz);	
+						
+				dr += ddr;
+				dz += ddz;
+				dphir += ddrphi;
+					
+				
+				(*mCorrDrDz)(i,j) = dr;
+				(*mCorrDphiRDz)(i,j) = dphir;
+				(*mCorrDz)(i,j) = dz;
+				
+				
+			}
+		}
+	}
+	
+	
+	dr = 0.0;
+	dz = 0.0;
+	dphir = 0.0;
+		
+	
+	for (Int_t j=zcolumn-2; j >= 0;j--) {
+		z0 = zlist[j] ;		
+			
+		for ( Int_t m = 0 ; m < phiSlice ; m++ ) {
+			phi0 = philist[m];		
+			mDistDrDz = matricesGDistDrDz[m];
+			mDistDphiRDz = matricesGDistDphiRDz[m];
+			mDistDz = matricesGDistDz[m];
+		
+			for (Int_t i=0; i< rrow;i++)  {
+				// do from j to 0
+				// follow the drift
+				radius0 = rlist[i];
+				phi = phi0;
+				radius = radius0;
+				z = z0;				
+				
+				lookupLocalDist->GetValue(radius,phi,z,ddr,ddrphi,ddz);	
+				
+				phi += ddrphi/radius;
+				radius = radius0 + ddr;
+				z = zlist[j+1] + ddz;
+			
+				if (j < zcolumn - 2) {
+					lookupGlobalDistTemp->GetValue(radius,phi,z,dr,dphir,dz);						
+				}
+				
+				(*mDistDrDz)(i,j) = dr + ddr;
+				(*mDistDphiRDz)(i,j) = dphir + ddrphi;
+				(*mDistDz)(i,j) = dz  + ddz;
+     				lookupGlobalDistTemp->CopyFromMatricesToInterpolator(j);
+		
+				if (j > 0) {	
+				   (*mDistDrDz)(i,j-1) = dr + ddr;
+				   (*mDistDphiRDz)(i,j-1) = dphir + ddrphi;
+				   (*mDistDz)(i,j-1) = dz  + ddz;
+     				   lookupGlobalDistTemp->CopyFromMatricesToInterpolator(j-1);
+				}
+				// copy to 1D for being able to interpolate at next step
+				
+			}
+		}
+	}
+	
+	delete lookupGlobalDistTemp;	
+}
+**/
+
 ///
 /// \param lookupGlobal 
 /// \param lookupRDz 

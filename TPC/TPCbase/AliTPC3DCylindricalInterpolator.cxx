@@ -422,6 +422,27 @@ void AliTPC3DCylindricalInterpolator::SetValue(TMatrixD **matricesVal) {
   }
 }
 
+/// Set the value as interpolation point
+///
+/// \param matricesVal TMatrixD** reference value for each point
+void AliTPC3DCylindricalInterpolator::SetValue(TMatrixD **matricesVal,Int_t iZ) {
+  Int_t indexVal1D;
+  Int_t index1D;
+  TMatrixD *mat;
+  if (!fIsAllocatingLookUp) {
+    fValue = new Double_t[fNPhi * fNR * fNZ];
+    fIsAllocatingLookUp = kTRUE;
+  }
+  for (Int_t m = 0; m < fNPhi; m++) {
+    indexVal1D = m * fNR * fNZ;
+    mat = matricesVal[m];
+    for (Int_t i = 0; i < fNR; i++) {
+      index1D = indexVal1D + i * fNZ;
+      fValue[index1D + iZ] = (*mat)(i, iZ);
+    }
+  }
+}
+
 /// set the position of R
 ///
 /// \param rList
