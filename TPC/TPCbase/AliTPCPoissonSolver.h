@@ -110,15 +110,24 @@ public:
   void SetCycleType(AliTPCPoissonSolver::CycleType cycleType) {
     fMgParameters.cycleType = cycleType;
   }
-private:
-  AliTPCPoissonSolver(const AliTPCPoissonSolver &);               // not implemented
-  AliTPCPoissonSolver &operator=(const AliTPCPoissonSolver &);    // not implemented
+protected:
+
   StrategyType fStrategy;  ///< strategy used default multiGrid
   TMatrixD **fExactSolution; ///< Pointer to exact solution
   TVectorD *fErrorConvergenceNorm2; ///< for storing convergence error  norm2
   TVectorD *fErrorConvergenceNormInf; ///< for storing convergence error normInf
   TVectorD *fError; ///< for storing error
   Double_t GetMaxExact() { return fMaxExact; };
+
+  Double_t GetExactError(TMatrixD **currentMatricesV, TMatrixD **tempArrayV, const Int_t phiSlice);
+  Double_t GetConvergenceError(TMatrixD **currentMatricesV, TMatrixD **prevArrayV, const Int_t phiSlice);
+  Double_t fMaxExact;
+  Bool_t fExactPresent;
+
+
+private:
+  AliTPCPoissonSolver(const AliTPCPoissonSolver &);               // not implemented
+  AliTPCPoissonSolver &operator=(const AliTPCPoissonSolver &);    // not implemented
 
   void PoissonRelaxation2D(TMatrixD &matrixV, TMatrixD &chargeDensity, Int_t nRRow, Int_t nZColumn,
                            Int_t maxIterations);
@@ -194,10 +203,6 @@ private:
                      std::vector<float> &vectorCoefficient2,
                      std::vector<float> &vectorCoefficient3, std::vector<float> &vectorCoefficient4,
                      std::vector<float> &vectorInverseCoefficient4);
-  Double_t GetExactError(TMatrixD **currentMatricesV, TMatrixD **tempArrayV, const Int_t phiSlice);
-  Double_t GetConvergenceError(TMatrixD **currentMatricesV, TMatrixD **prevArrayV, const Int_t phiSlice);
-  Double_t fMaxExact;
-  Bool_t fExactPresent;
 /// \cond CLASSIMP
   ClassDef(AliTPCPoissonSolver,5);
 /// \endcond

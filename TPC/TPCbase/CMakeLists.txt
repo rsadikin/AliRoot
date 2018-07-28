@@ -17,7 +17,7 @@
 set(MODULE TPCbase)
 add_definitions(-D_MODULE_="${MODULE}")
 add_subdirectory(test)
-
+add_subdirectory(spacecharge-gpu)
 # Module include folder
 include_directories(${AliRoot_SOURCE_DIR}/TPC/${MODULE})
 
