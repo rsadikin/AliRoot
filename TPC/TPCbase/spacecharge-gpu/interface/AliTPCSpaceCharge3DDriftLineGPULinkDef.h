@@ -14,6 +14,7 @@
 
 // #pragma link C++ class AliTPCPoissonSolver +;
 #pragma link C++ class AliTPCPoissonSolverCuda +;
+#pragma link C++ class AliTPCSpaceCharge3DDriftLineCuda +;
 // #pragma link C++ class AliTPC3DCylindricalInterpolator +;
 // #pragma link C++ class AliTPC3DCylindricalInterpolatorFull +;
 // #pragma link C++ class AliTPCLookUpTable3DInterpolatorD +;

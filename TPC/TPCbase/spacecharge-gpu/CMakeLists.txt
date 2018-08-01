@@ -55,6 +55,8 @@ include_directories(${AliRoot_SOURCE_DIR}/TPC/TPCbase
 
 #compile CUDA object file
 cuda_compile(SCGPU_O nvcckernel/PoissonSolver3DGPU.cu)
+cuda_compile(SCGPU_1 nvcckernel/DifferentialGPU.cu)
+cuda_compile(SCGPU_2 nvcckernel/IntegrateEzGPU.cu)
 
 
 
@@ -74,17 +76,23 @@ set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/G__AliTPCSpaceCharge3DDr
 # Sources in alphabetical order
 set(SRCS
     ${SCGPUDIR}/interface/AliTPCPoissonSolverCuda.cxx
+    ${SCGPUDIR}/interface/AliTPCSpaceCharge3DDriftLineCuda.cxx
     ${SCGPU_O}
+    ${SCGPU_1}
+    ${SCGPU_2}
    )
 
 # Headers from sources
 set(CINTHDRS
     ${SCGPUDIR}/interface/AliTPCPoissonSolverCuda.h
+    ${SCGPUDIR}/interface/AliTPCSpaceCharge3DDriftLineCuda.h
     )
   
 set(HDRS
     ${CINTHDRS}
     ${SCGPUDIR}/nvcckernel/PoissonSolver3DGPU.h
+    ${SCGPUDIR}/nvcckernel/DifferentialGPU.h
+    ${SCGPUDIR}/nvcckernel/IntegrateEzGPU.h
   )
 
 # Generate the dictionary
