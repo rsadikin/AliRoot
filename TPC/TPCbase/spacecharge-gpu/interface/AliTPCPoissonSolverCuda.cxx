@@ -35,6 +35,9 @@ ClassImp(AliTPCPoissonSolverCuda)
 AliTPCPoissonSolverCuda::AliTPCPoissonSolverCuda()
   :  AliTPCPoissonSolver() {
 
+	fErrorConvF = new TVectorF(fMgParameters.nMGCycle);
+	fErrorExactF = new TVectorF(fMgParameters.nMGCycle);
+
 }
 
 /// Constructor
@@ -43,11 +46,6 @@ AliTPCPoissonSolverCuda::AliTPCPoissonSolverCuda()
 AliTPCPoissonSolverCuda::AliTPCPoissonSolverCuda(const char *name, const char *title)
   : AliTPCPoissonSolver(name, title) {
   /// constructor
-	fExactPresent = kFALSE;
-	fErrorConvergenceNorm2 = new TVectorD(fMgParameters.nMGCycle);
-	fErrorConvergenceNormInf = new TVectorD(fMgParameters.nMGCycle);
-	fError = new TVectorD(fMgParameters.nMGCycle);
-
 
 	fErrorConvF = new TVectorF(fMgParameters.nMGCycle);
 	fErrorExactF = new TVectorF(fMgParameters.nMGCycle);
@@ -55,9 +53,6 @@ AliTPCPoissonSolverCuda::AliTPCPoissonSolverCuda(const char *name, const char *t
 
 /// destructor
 AliTPCPoissonSolverCuda::~AliTPCPoissonSolverCuda() {
-	delete fErrorConvergenceNorm2;
-	delete fErrorConvergenceNormInf;
-	delete fError;
 	delete fErrorConvF;
 	delete fErrorExactF;
 }

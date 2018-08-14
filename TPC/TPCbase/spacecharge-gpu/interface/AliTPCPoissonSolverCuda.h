@@ -17,8 +17,8 @@
 #include "TMatrixD.h"
 #include "TMatrixF.h"
 #include "TVectorD.h"
-#include "../../AliTPCPoissonSolver.h"
-#include "../nvcckernel/PoissonSolver3DGPU.h"
+#include "AliTPCPoissonSolver.h"
+#include "PoissonSolver3DGPU.h"
 
 
 

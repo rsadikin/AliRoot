@@ -97,7 +97,7 @@ set(HDRS
 
 # Generate the dictionary
 # It will create G_ARG1.cxx and G_ARG1.h / ARG1 = function first argument
-# get_directory_property(incdirs INCLUDE_DIRECTORIES)
+get_directory_property(incdirs INCLUDE_DIRECTORIES)
 
 # generate_dictionary("${MODULE}" "${MODULE}LinkDef.h" "${HDRS}" "${incdirs}")
 
@@ -109,12 +109,12 @@ set(HDRS
 
 
 
-generate_dictionary("${MODULE}" "${SCGPUDIR}/interface/${MODULE}LinkDef.h" "${CINTHDRS}" "${incdirs}")
+generate_dictionary("${MODULE}" "${SCGPUDIR}/interface/${MODULE}LinkDef.h" "${HDRS}" "${incdirs}")
 
 # Generate the ROOT map
 # Dependecies
 set(ROOT_DEPENDENCIES Core EG GenVector Geom Gpad Graf Gui Hist MathCore Matrix Minuit Physics Proof RIO Spectrum Tree)
-set(ALIROOT_DEPENDENCIES STEERBase STAT STEER CDB ESD RAWDatabase RAWDatarec TPCbase)
+set(ALIROOT_DEPENDENCIES STEERBase STAT STEER CDB ESD RAWDatabase RAWDatarec  TPCbase)
 
 set(LIBDEPS ${ALIROOT_DEPENDENCIES} ${ROOT_DEPENDENCIES} ${CUDA_LIBRARY})
 generate_rootmap("${MODULE}" "${LIBDEPS}" "${SCGPUDIR}/interface/${MODULE}LinkDef.h")

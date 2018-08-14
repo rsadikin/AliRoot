@@ -20,7 +20,8 @@
 #include "TMatrixD.h"
 #include "TMatrixF.h"
 #include "TVectorD.h"
-#include "../../AliTPCSpaceCharge3DDriftLine.h"
+#include "AliTPCSpaceCharge3DDriftLine.h"
+#include "AliTPCPoissonSolverCuda.h"
 
 
 
@@ -31,7 +32,10 @@ public:
   AliTPCSpaceCharge3DDriftLineCuda(const char *name, const char *title, Int_t nRRow, Int_t nZColumn, Int_t nPhiSlice);
   AliTPCSpaceCharge3DDriftLineCuda(const char *name, const char *title, Int_t nRRow, Int_t nZColumn, Int_t nPhiSlice, Int_t interpolationOrder, Int_t irregularGridSize, Int_t rbfKernelType);
   virtual ~AliTPCSpaceCharge3DDriftLineCuda();
-
+  void InitSpaceCharge3DPoissonIntegralDz(Int_t nRRow, Int_t nZColumn, Int_t phiSlice, Int_t maxIteration,
+                                          Double_t stopConvergence);
+private:
+  AliTPCPoissonSolverCuda *fPoissonSolverCuda;
 /// \cond CLASSIMP
   ClassDef(AliTPCSpaceCharge3DDriftLineCuda,
   1);

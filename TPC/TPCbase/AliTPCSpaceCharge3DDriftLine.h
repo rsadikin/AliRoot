@@ -256,8 +256,38 @@ public:
   void GetElectricFieldCyl(const Float_t x[], Short_t roc, Double_t dx[]);
   void Init();
   Profile GetProfile() { return myProfile; }
+protected:
+  Int_t fCorrectionType; ///> use regular or irregular grid method
+  Int_t fInterpolationOrder; ///>  Order of interpolation (1-> tri linear, 2->Lagrange interpolation order 2, 3> cubic spline)
+  Int_t fIrregularGridSize; ///>  Size of irregular grid cubes for interpolation (min 3)
+  Int_t fRBFKernelType; ///>  RBF kernel type 
+  Int_t fIntegrationStrategy;
 
-private:
+
+  TH3 *fHistogram3DSpaceCharge;  //-> Histogram with the input space charge histogram - used as an optional input
+  TH3 *fHistogram3DSpaceChargeA;  //-> Histogram with the input space charge histogram - used as an optional input side A
+  TH3 *fHistogram3DSpaceChargeC;  //-> Histogram with the input space charge histogram - used as an optional input side C
+  TF1 *fFormulaBoundaryIFCA = NULL; //-> function define boundary values for IFC side A V(z) assuming symmetry in phi and r.
+  TF1 *fFormulaBoundaryIFCC = NULL; //-> function define boundary values for IFC side C V(z) assuming symmetry in phi and r.
+  TF1 *fFormulaBoundaryOFCA = NULL; //-> function define boundary values for OFC side A V(z) assuming symmetry in phi and r.
+  TF1 *fFormulaBoundaryOFCC = NULL; ///<- function define boundary values for IFC side C V(z) assuming symmetry in phi and r.
+  TF1 *fFormulaBoundaryROCA = NULL; ///<- function define boundary values for ROC side A V(r) assuming symmetry in phi and z.
+  TF1 *fFormulaBoundaryROCC = NULL; ///<- function define boundary values for ROC side V V(t) assuming symmetry in phi and z.
+  TF1 *fFormulaBoundaryCE = NULL; ///<- function define boundary values for CE V(z) assuming symmetry in phi and z.
+
+  TFormula *fFormulaPotentialV = NULL; ///<- potential V(r,rho,z) function
+  TFormula *fFormulaChargeRho = NULL;  ///<- charge density Rho(r,rho,z) function
+
+  // analytic formula for E
+  TFormula *fFormulaEPhi = NULL; ///<- ePhi EPhi(r,rho,z) electric field (phi) function
+  TFormula *fFormulaEr = NULL; ///<- er Er(r,rho,z) electric field (r) function
+  TFormula *fFormulaEz = NULL; ///<- ez Ez(r,rho,z) electric field (z) function
+
+  Double_t *fListPotentialBoundaryA; //[fNRRows + fNNColumns] * 2 * fNPhiSlices
+  Double_t *fListPotentialBoundaryC; //[fNRRows + fNNColumns] * 2 * fNPhiSlices
+
+  AliTPCLookUpTable3DInterpolatorD *fLookupElectricFieldA; //->look-up table for electric field side A
+  AliTPCLookUpTable3DInterpolatorD *fLookupElectricFieldC; //-> look-up table for electric field side C
   static const Int_t kNMaxPhi = 360;
 
   Int_t fNRRows;     ///< the maximum on row-slices so far ~ 2cm slicing
@@ -265,22 +295,15 @@ private:
   Int_t fNZColumns;  ///< the maximum on column-slices so  ~ 2cm slicing
   Float_t fC0; ///< coefficient C0 (compare Jim Thomas's notes for definitions)
   Float_t fC1; ///< coefficient C1 (compare Jim Thomas's notes for definitions)
-  Float_t fCorrectionFactor; ///< Space Charge Correction factor in comparison to initialized
 
+  Float_t fCorrectionFactor; ///< Space Charge Correction factor in comparison to initialized
   Bool_t fInitLookUp; ///< flag to check if the Look Up table was created
   Double_t *fListR; //[fNRRows] list of r-coordinate of grids
   Double_t *fListPhi; //[fNPhiSlices] list of \f$ \phi\f$ -coordinate of grids
   Double_t *fListZ; //[fNZColumns]
   Double_t *fListZA; //[fNZColumns]  list of z-coordinate of grids
   Double_t *fListZC; //[fNZColumns] list of z-coordinate of grids
-  Double_t *fListPotentialBoundaryA; //[fNRRows + fNNColumns] * 2 * fNPhiSlices
-  Double_t *fListPotentialBoundaryC; //[fNRRows + fNNColumns] * 2 * fNPhiSlices
 
-  Int_t fCorrectionType; ///> use regular or irregular grid method
-  Int_t fInterpolationOrder; ///>  Order of interpolation (1-> tri linear, 2->Lagrange interpolation order 2, 3> cubic spline)
-  Int_t fIrregularGridSize; ///>  Size of irregular grid cubes for interpolation (min 3)
-  Int_t fRBFKernelType; ///>  RBF kernel type 
-  Int_t fIntegrationStrategy;
 
   Profile myProfile; 
 
@@ -354,28 +377,6 @@ private:
   AliTPCLookUpTable3DInterpolatorD *fLookupInverseDistA; //-> look-up table for local distortion (from inverse) side A
   AliTPCLookUpTable3DInterpolatorD *fLookupInverseDistC; //-> look-up table for local distortion (from inverse) side C
 
-
-  AliTPCLookUpTable3DInterpolatorD *fLookupElectricFieldA; //->look-up table for electric field side A
-  AliTPCLookUpTable3DInterpolatorD *fLookupElectricFieldC; //-> look-up table for electric field side C
-
-  TH3 *fHistogram3DSpaceCharge;  //-> Histogram with the input space charge histogram - used as an optional input
-  TH3 *fHistogram3DSpaceChargeA;  //-> Histogram with the input space charge histogram - used as an optional input side A
-  TH3 *fHistogram3DSpaceChargeC;  //-> Histogram with the input space charge histogram - used as an optional input side C
-  TF1 *fFormulaBoundaryIFCA = NULL; //-> function define boundary values for IFC side A V(z) assuming symmetry in phi and r.
-  TF1 *fFormulaBoundaryIFCC = NULL; //-> function define boundary values for IFC side C V(z) assuming symmetry in phi and r.
-  TF1 *fFormulaBoundaryOFCA = NULL; //-> function define boundary values for OFC side A V(z) assuming symmetry in phi and r.
-  TF1 *fFormulaBoundaryOFCC = NULL; ///<- function define boundary values for IFC side C V(z) assuming symmetry in phi and r.
-  TF1 *fFormulaBoundaryROCA = NULL; ///<- function define boundary values for ROC side A V(r) assuming symmetry in phi and z.
-  TF1 *fFormulaBoundaryROCC = NULL; ///<- function define boundary values for ROC side V V(t) assuming symmetry in phi and z.
-  TF1 *fFormulaBoundaryCE = NULL; ///<- function define boundary values for CE V(z) assuming symmetry in phi and z.
-
-  TFormula *fFormulaPotentialV = NULL; ///<- potential V(r,rho,z) function
-  TFormula *fFormulaChargeRho = NULL;  ///<- charge density Rho(r,rho,z) function
-
-  // analytic formula for E
-  TFormula *fFormulaEPhi = NULL; ///<- ePhi EPhi(r,rho,z) electric field (phi) function
-  TFormula *fFormulaEr = NULL; ///<- er Er(r,rho,z) electric field (r) function
-  TFormula *fFormulaEz = NULL; ///<- ez Ez(r,rho,z) electric field (z) function
 
 
 

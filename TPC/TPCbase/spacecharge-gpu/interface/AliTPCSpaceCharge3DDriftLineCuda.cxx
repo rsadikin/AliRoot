@@ -22,8 +22,11 @@
 /// \author Rifki Sadikin <rifki.sadikin@cern.ch>, Indonesian Institute of Sciences
 /// \date Nov 20, 2017
 
+#include "TMath.h"
+#include "TStopwatch.h"
+#include "AliSysInfo.h"
+#include "AliLog.h"
 #include "AliTPCSpaceCharge3DDriftLineCuda.h"
-
 /// \cond CLASSIMP
 ClassImp(AliTPCSpaceCharge3DDriftLineCuda)
 /// \endcond
@@ -85,4 +88,293 @@ AliTPCSpaceCharge3DDriftLineCuda::AliTPCSpaceCharge3DDriftLineCuda(
 ///
 AliTPCSpaceCharge3DDriftLineCuda::~AliTPCSpaceCharge3DDriftLineCuda() {
 
+}
+
+
+
+
+
+/// 
+void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
+  Int_t nRRow, Int_t nZColumn, Int_t phiSlice, Int_t maxIteration, Double_t stoppingConvergence) {
+  Int_t phiSlicesPerSector = phiSlice / kNumSector;
+  const Float_t gridSizeR = (fgkOFCRadius - fgkIFCRadius) / (nRRow - 1);
+  const Float_t gridSizeZ = fgkTPCZ0 / (nZColumn - 1);
+  const Float_t gridSizePhi = TMath::TwoPi() / phiSlice;
+  const Double_t ezField = (fgkCathodeV - fgkGG) / fgkTPCZ0; // = ALICE Electric Field (V/cm) Magnitude ~ -400 V/cm;
+
+  // local variables
+  Float_t radius0, phi0, z0;
+
+  // memory allocation for temporary matrices:
+  // potential (boundary values), charge distribution
+  TMatrixD *matricesV[phiSlice], *matricesCharge[phiSlice];
+  TMatrixD *matricesEr[phiSlice], *matricesEPhi[phiSlice], *matricesEz[phiSlice];
+  TMatrixD *matricesDistDrDz[phiSlice], *matricesDistDPhiRDz[phiSlice], *matricesDistDz[phiSlice];
+  TMatrixD *matricesCorrDrDz[phiSlice], *matricesCorrDPhiRDz[phiSlice], *matricesCorrDz[phiSlice];
+  TMatrixD *matricesGDistDrDz[phiSlice], *matricesGDistDPhiRDz[phiSlice], *matricesGDistDz[phiSlice];
+  TMatrixD *matricesGCorrDrDz[phiSlice], *matricesGCorrDPhiRDz[phiSlice], *matricesGCorrDz[phiSlice];
+
+  for (Int_t k = 0; k < phiSlice; k++) {
+    matricesV[k] = new TMatrixD(nRRow, nZColumn);
+    matricesCharge[k] = new TMatrixD(nRRow, nZColumn);
+    matricesEr[k] = new TMatrixD(nRRow, nZColumn);
+    matricesEPhi[k] = new TMatrixD(nRRow, nZColumn);
+    matricesEz[k] = new TMatrixD(nRRow, nZColumn);
+    matricesDistDrDz[k] = new TMatrixD(nRRow, nZColumn);
+    matricesDistDPhiRDz[k] = new TMatrixD(nRRow, nZColumn);
+    matricesDistDz[k] = new TMatrixD(nRRow, nZColumn);
+    matricesCorrDrDz[k] = new TMatrixD(nRRow, nZColumn);
+    matricesCorrDPhiRDz[k] = new TMatrixD(nRRow, nZColumn);
+    matricesCorrDz[k] = new TMatrixD(nRRow, nZColumn);
+    matricesGDistDrDz[k] = new TMatrixD(nRRow, nZColumn);
+    matricesGDistDPhiRDz[k] = new TMatrixD(nRRow, nZColumn);
+    matricesGDistDz[k] = new TMatrixD(nRRow, nZColumn);
+    matricesGCorrDrDz[k] = new TMatrixD(nRRow, nZColumn);
+    matricesGCorrDPhiRDz[k] = new TMatrixD(nRRow, nZColumn);
+    matricesGCorrDz[k] = new TMatrixD(nRRow, nZColumn);
+
+  }
+
+  // list of point as used in the poisson relaxation and the interpolation (for interpolation)
+  Double_t rList[nRRow], zList[nZColumn], phiList[phiSlice];
+
+  // pointer to current TF1 for potential boundary values
+  TF1 *f1BoundaryIFC = NULL;
+  TF1 *f1BoundaryOFC = NULL;
+  TF1 *f1BoundaryROC = NULL;
+  TStopwatch w;
+
+  for (Int_t k = 0; k < phiSlice; k++) phiList[k] = gridSizePhi * k;
+  for (Int_t i = 0; i < nRRow; i++) rList[i] = fgkIFCRadius + i * gridSizeR;
+  for (Int_t j = 0; j < nZColumn; j++) zList[j] = j * gridSizeZ;
+
+
+  // allocate look up local distortion
+  AliTPCLookUpTable3DInterpolatorD *lookupLocalDist =
+    new AliTPCLookUpTable3DInterpolatorD(
+      nRRow, matricesDistDrDz, rList, phiSlice, matricesDistDPhiRDz, phiList, nZColumn, matricesDistDz,
+      zList, fInterpolationOrder);
+
+  // allocate look up local correction
+  AliTPCLookUpTable3DInterpolatorD *lookupLocalCorr =
+    new AliTPCLookUpTable3DInterpolatorD(
+      nRRow, matricesCorrDrDz, rList, phiSlice, matricesCorrDPhiRDz, phiList, nZColumn, matricesCorrDz,
+      zList, fInterpolationOrder);
+
+  // allocate look up for global distortion
+  AliTPCLookUpTable3DInterpolatorD *lookupGlobalDist =
+    new AliTPCLookUpTable3DInterpolatorD(
+      nRRow, matricesGDistDrDz, rList, phiSlice, matricesGDistDPhiRDz, phiList, nZColumn, matricesGDistDz,
+      zList, fInterpolationOrder);
+  // allocate look up for global distortion
+  AliTPCLookUpTable3DInterpolatorD *lookupGlobalCorr =
+    new AliTPCLookUpTable3DInterpolatorD(
+      nRRow, matricesGCorrDrDz, rList, phiSlice, matricesGCorrDPhiRDz, phiList, nZColumn, matricesGCorrDz,
+      zList, fInterpolationOrder);
+
+  // should be set, in another place
+  const Int_t symmetry = 0; // fSymmetry
+
+  // for irregular
+  TMatrixD **matricesIrregularDrDz = NULL;
+  TMatrixD **matricesIrregularDPhiRDz = NULL;
+  TMatrixD **matricesIrregularDz = NULL;
+  TMatrixD **matricesPhiIrregular = NULL;
+  TMatrixD **matricesRIrregular = NULL;
+  TMatrixD **matricesZIrregular = NULL;
+
+  // for charge
+  TMatrixD **matricesLookUpCharge = NULL;
+  AliTPC3DCylindricalInterpolator *chargeInterpolator = NULL;
+  AliTPC3DCylindricalInterpolator *potentialInterpolator = NULL;
+  Double_t *potentialBoundary = NULL;
+  TMatrixD *matrixV;
+  TMatrixD *matrixCharge;
+  Int_t pIndex = 0;
+
+ 
+  // do if look up table haven't be initialized
+  if (!fInitLookUp) {
+    // initialize for working memory
+    for (Int_t side = 0; side < 2; side++) {
+      // zeroing global distortion/correction
+      for (Int_t k = 0; k < phiSlice; k++) {
+        matricesDistDrDz[k]->Zero();
+        matricesDistDPhiRDz[k]->Zero();
+        matricesDistDz[k]->Zero();
+        matricesCorrDrDz[k]->Zero();
+        matricesCorrDPhiRDz[k]->Zero();
+        matricesCorrDz[k]->Zero();
+
+        matricesGDistDrDz[k]->Zero();
+        matricesGDistDPhiRDz[k]->Zero();
+        matricesGDistDz[k]->Zero();
+        matricesGCorrDrDz[k]->Zero();
+        matricesGCorrDPhiRDz[k]->Zero();
+        matricesGCorrDz[k]->Zero();
+      }
+      if (side == 0) {
+        matricesIrregularDrDz = fMatrixIntCorrDrEzIrregularA;
+        matricesIrregularDPhiRDz = fMatrixIntCorrDPhiREzIrregularA;
+        matricesIrregularDz = fMatrixIntCorrDzIrregularA;
+
+        matricesPhiIrregular = fMatrixPhiListIrregularA;
+        matricesRIrregular = fMatrixRListIrregularA;
+        matricesZIrregular = fMatrixZListIrregularA;
+        matricesLookUpCharge = fMatrixChargeA;
+        chargeInterpolator = fInterpolatorChargeA;
+        potentialInterpolator = fInterpolatorPotentialA;
+        fLookupDistA->SetLookUpR(matricesDistDrDz);
+        fLookupDistA->SetLookUpPhi(matricesDistDPhiRDz);
+        fLookupDistA->SetLookUpZ(matricesDistDz);
+
+
+        fLookupElectricFieldA->SetLookUpR(matricesEr);
+        fLookupElectricFieldA->SetLookUpPhi(matricesEPhi);
+        fLookupElectricFieldA->SetLookUpZ(matricesEz);
+
+        potentialBoundary = fListPotentialBoundaryA;
+        f1BoundaryIFC = fFormulaBoundaryIFCA;
+        f1BoundaryOFC = fFormulaBoundaryOFCA;
+        f1BoundaryROC = fFormulaBoundaryROCA;
+      } else {
+        matricesIrregularDrDz = fMatrixIntCorrDrEzIrregularC;
+        matricesIrregularDPhiRDz = fMatrixIntCorrDPhiREzIrregularC;
+        matricesIrregularDz = fMatrixIntCorrDzIrregularC;
+        matricesPhiIrregular = fMatrixPhiListIrregularC;
+        matricesRIrregular = fMatrixRListIrregularC;
+        matricesZIrregular = fMatrixZListIrregularC;
+        matricesLookUpCharge = fMatrixChargeC;
+        chargeInterpolator = fInterpolatorChargeC;
+        potentialInterpolator = fInterpolatorPotentialC;
+        fLookupDistC->SetLookUpR(matricesDistDrDz);
+        fLookupDistC->SetLookUpPhi(matricesDistDPhiRDz);
+        fLookupDistC->SetLookUpZ(matricesDistDz);
+        fLookupElectricFieldC->SetLookUpR(matricesEr);
+        fLookupElectricFieldC->SetLookUpPhi(matricesEPhi);
+        fLookupElectricFieldC->SetLookUpZ(matricesEz);
+
+        potentialBoundary = fListPotentialBoundaryC;
+        f1BoundaryIFC = fFormulaBoundaryIFCC;
+        f1BoundaryOFC = fFormulaBoundaryOFCC;
+        f1BoundaryROC = fFormulaBoundaryROCC;
+      }
+
+      // fill the potential boundary
+      // guess the initial potential
+      // fill also charge
+      //pIndex = 0;
+
+      //AliInfo(Form("Step = 0: Fill Boundary and Charge Densities"));
+      for (Int_t k = 0; k < phiSlice; k++) {
+        phi0 = k * gridSizePhi;
+        matrixV = matricesV[k];
+        matrixCharge = matricesCharge[k];
+        for (Int_t i = 0; i < nRRow; i++) {
+          radius0 = fgkIFCRadius + i * gridSizeR;
+          for (Int_t j = 0; j < nZColumn; j++) {
+            z0 = j * gridSizeZ;
+            (*matrixCharge)(i, j) = chargeInterpolator->GetValue(rList[i], phiList[k], zList[j]);
+            (*matrixV)(i, j) = 0.0; // fill zeros
+            if (fFormulaPotentialV == NULL) {
+              // boundary IFC
+              if (i == 0) {
+                if (f1BoundaryIFC != NULL) {
+                  (*matrixV)(i, j) = f1BoundaryIFC->Eval(z0);
+                }
+              }
+              if (i == (nRRow - 1)) {
+                if (f1BoundaryOFC != NULL)
+                  (*matrixV)(i, j) = f1BoundaryOFC->Eval(z0);
+              }
+              if (j == 0) {
+                if (fFormulaBoundaryCE) {
+                  (*matrixV)(i, j) = fFormulaBoundaryCE->Eval(radius0);
+                }
+              }
+              if (j == (nZColumn - 1)) {
+                if (f1BoundaryROC != NULL)
+                  (*matrixV)(i, j) = f1BoundaryROC->Eval(radius0);
+              }
+            } else {
+              if ((i == 0) || (i == (nRRow - 1)) || (j == 0) || (j == (nZColumn - 1))) {
+                (*matrixV)(i, j) = fFormulaPotentialV->Eval(radius0, phi0, z0);
+              }
+            }
+          }
+        }
+      }
+      AliInfo(Form("Step 0: Preparing Charge interpolator: %f\n", w.CpuTime()));
+      AliTPCPoissonSolver::fgConvergenceError = stoppingConvergence;
+
+      fPoissonSolverCuda->SetStrategy(AliTPCPoissonSolver::kMultiGrid);
+      (fPoissonSolverCuda->fMgParameters).cycleType = AliTPCPoissonSolver::kFCycle;
+      (fPoissonSolverCuda->fMgParameters).isFull3D = kFALSE;
+      (fPoissonSolverCuda->fMgParameters).nMGCycle = maxIteration;
+      (fPoissonSolverCuda->fMgParameters).maxLoop = 6;
+
+
+      w.Start();
+      fPoissonSolverCuda->PoissonSolver3D(matricesV, matricesCharge, nRRow, nZColumn, phiSlice, maxIteration,
+                                      symmetry);
+      w.Stop();
+
+      potentialInterpolator->SetValue(matricesV);
+      potentialInterpolator->InitCubicSpline();
+
+
+      AliInfo(Form("Step 1: Poisson solver: %f\n", w.CpuTime()));
+      myProfile.poissonSolverTime = w.CpuTime();
+      myProfile.iteration = fPoissonSolver->fIterations;
+
+
+      w.Start();
+      ElectricField(matricesV,
+                    matricesEr, matricesEPhi, matricesEz, nRRow, nZColumn, phiSlice,
+                    gridSizeR, gridSizePhi, gridSizeZ, symmetry, fgkIFCRadius);
+      w.Stop();
+
+      myProfile.electricFieldTime = w.CpuTime();
+      AliInfo(Form("Step 2: Electric Field Calculation: %f\n", w.CpuTime()));
+      w.Start();
+      LocalDistCorrDz(matricesEr, matricesEPhi, matricesEz,
+                      matricesDistDrDz, matricesDistDPhiRDz, matricesDistDz,
+                      matricesCorrDrDz, matricesCorrDPhiRDz, matricesCorrDz,
+                      nRRow, nZColumn, phiSlice, gridSizeZ, ezField);
+      w.Stop();
+      myProfile.localDistortionTime = w.CpuTime();
+    }
+    fInitLookUp = kTRUE;
+  }
+
+
+
+  // memory de-allocation for temporary matrices
+  for (Int_t k = 0; k < phiSlice; k++) {
+    delete matricesV[k];
+    delete matricesCharge[k];
+    delete matricesEr[k];
+    delete matricesEPhi[k];
+    delete matricesEz[k];
+    delete matricesDistDrDz[k];
+    delete matricesDistDPhiRDz[k];
+    delete matricesDistDz[k];
+
+    delete matricesCorrDrDz[k];
+    delete matricesCorrDPhiRDz[k];
+    delete matricesCorrDz[k];
+    delete matricesGDistDrDz[k];
+    delete matricesGDistDPhiRDz[k];
+    delete matricesGDistDz[k];
+
+    delete matricesGCorrDrDz[k];
+    delete matricesGCorrDPhiRDz[k];
+    delete matricesGCorrDz[k];
+
+  }
+  delete lookupLocalDist;
+  delete lookupLocalCorr;
+  delete lookupGlobalDist;
+  delete lookupGlobalCorr;
 }
