@@ -23,11 +23,12 @@
 #endif
 
 
-void UnitTestCorrectnessDistortion(const Int_t rRow,const Int_t zColumn,const  Int_t phiSlice, Int_t rRowTest, Int_t zColumnTest, const Int_t phiSliceTest, Int_t correctionType,TTreeSRedirector *pcStream);
-void UnitTestConsistencyDistortionZShort(const Int_t rRow, const Int_t zColumn, const Int_t phiSlice, const Int_t rRowTest, const Int_t zColumnTest, const Int_t phiSliceTest, const Int_t correctionType, TTreeSRedirector *pcStream);
+void UnitTestCorrectnessDistortion(const Int_t rRow,const Int_t zColumn,const  Int_t phiSlice, Int_t rRowTest, Int_t zColumnTest, const Int_t phiSliceTest, Int_t correctionType,Int_t integrationStrategy, TTreeSRedirector *pcStream);
+void UnitTestConsistencyDistortionZShort(const Int_t rRow, const Int_t zColumn, const Int_t phiSlice, const Int_t rRowTest, const Int_t zColumnTest, const Int_t phiSliceTest, const Int_t correctionType, const Int_t integrationStrategy, TTreeSRedirector *pcStream);
 void GetResidueFromDistortionTree(Int_t unitTestId, const char * filename,const char *numericName, const char *analyticName, Double_t *errorList, Int_t &indexErrorList,TTreeSRedirector *pcStream);
 void GetResidueFromDistortionAnalyticTree(Int_t unitTestId, const char * numericFileName, const char * analyticFileName, const char *varName, Double_t *errorList, Int_t &indexErrorList,TTreeSRedirector *pcStream);
 void WriteErrorToPCStream(Int_t unitTestId, Int_t rRow, Int_t zColumn, Int_t phiSlice, Int_t rRowTest, Int_t zColumnTest, Int_t phiSliceTest, Int_t correctionType, Int_t varNameId, Double_t *errorList, Int_t  indexErrorList,TTreeSRedirector *pcStream);
+void WriteProfileToPCStream(Int_t unitTestId,Int_t rRow, Int_t zColumn,Int_t phiSlice, Int_t correctionType,Int_t integrationType,AliTPCSpaceCharge3DDriftLine::Profile profile,TTreeSRedirector *pcStream);
 void PrintErrorStatus();
 
 Double_t dFunctionVZ(Double_t *x, Double_t *par); // function test for boundary
@@ -67,24 +68,20 @@ void AliTPCSpaceCharge3DDriftLineTest() {
   Int_t phiSliceList[] = {18,36,72,144,288};
   Int_t rRow, zColumn, phiSlice;
   const Int_t numberExperiment = 1;
-  Int_t rRowTest = 50;
-  Int_t zColumnTest = 50;
-  Int_t phiSliceTest = 50;
+  Int_t rRowTest = 100;
+  Int_t zColumnTest = 100;
+  Int_t phiSliceTest = 100;
   Int_t nPoint =rRowTest * zColumnTest * phiSliceTest;
 
   TTreeSRedirector *pcStream = new TTreeSRedirector("spaceChargeDriftLinePerformance.root","RECREATE");
-
-
   for (Int_t iExperiment = 0;iExperiment < numberExperiment;iExperiment++) {
     rRow = rRowList[iExperiment];
     zColumn = zColumnList[iExperiment];
     phiSlice = phiSliceList[iExperiment];
-    UnitTestCorrectnessDistortion(rRow, zColumn, phiSlice, rRowTest, zColumnTest, phiSliceTest, 0,  pcStream); // regular
-    UnitTestCorrectnessDistortion(rRow, zColumn, phiSlice, rRowTest, zColumnTest, phiSliceTest, 1,  pcStream); // irregular
+    UnitTestCorrectnessDistortion(rRow, zColumn, phiSlice, rRowTest, zColumnTest, phiSliceTest, 0,0,  pcStream); // regular and naive
+    UnitTestCorrectnessDistortion(rRow, zColumn, phiSlice, rRowTest, zColumnTest, phiSliceTest, 0,1,  pcStream); // regular and opt
   }
-
   delete pcStream;
-
   PrintErrorStatus();
 }
 
@@ -94,7 +91,7 @@ void AliTPCSpaceCharge3DDriftLineTest() {
 /// - a set of known functions and stored it in scExact
 /// - generate numerical calculation in scNumeric
 /// - calculate relative error (accepted if less than 10^-2)
-void UnitTestCorrectnessDistortion(const Int_t rRow,const  Int_t zColumn, const Int_t phiSlice,   Int_t rRowTest, Int_t zColumnTest, Int_t phiSliceTest, Int_t correctionType, TTreeSRedirector *pcStream) {
+void UnitTestCorrectnessDistortion(const Int_t rRow,const  Int_t zColumn, const Int_t phiSlice,   Int_t rRowTest, Int_t zColumnTest, Int_t phiSliceTest, Int_t correctionType, Int_t integrationStrategy, TTreeSRedirector *pcStream) {
 
   const Int_t maxIter = 100;
   const Float_t convergenceError = 1e-8;
@@ -173,9 +170,15 @@ void UnitTestCorrectnessDistortion(const Int_t rRow,const  Int_t zColumn, const 
   else
     ::Info("AliTPCSpaceCharge3DDriftLineTest::UnitTestCorrectnessDistortion","Case irregular grid interpolation for Correction");
 
+  if (integrationStrategy  == 0)
+    ::Info("AliTPCSpaceCharge3DDriftLineTest::UnitTestCorrectnessDistortion","Naive Integration");
+  else
+    ::Info("AliTPCSpaceCharge3DDriftLineTest::UnitTestCorrectnessDistortion","Opt Integration");
+
   sc->SetPotentialBoundaryAndChargeFormula(vTestFunction, rhoTestFunction);
   sc->SetElectricFieldFormula(erTestFunction,ePhiTestFunction,ezTestFunction);
   sc->SetCorrectionType(correctionType);
+  sc->SetIntegrationStrategy(integrationStrategy);
   sc->SetOmegaTauT1T2(-0.35, 1., 1.);
 
   if (correctionType == 0) {
@@ -192,7 +195,7 @@ void UnitTestCorrectnessDistortion(const Int_t rRow,const  Int_t zColumn, const 
 
   // for numeric
   sc->InitSpaceCharge3DPoissonIntegralDz(rRow, zColumn, phiSlice, maxIter, convergenceError);
-
+  WriteProfileToPCStream(0,rRow,zColumn,phiSlice,correctionType,integrationStrategy,sc->GetProfile(),pcStream);
 
   TMatrixD *matricesDistDrDzExactA[phiSlice];
   TMatrixD *matricesDistDrDzExactC[phiSlice];
@@ -366,8 +369,6 @@ void UnitTestCorrectnessDistortion(const Int_t rRow,const  Int_t zColumn, const 
   oldIndexErrorList = indexErrorList;
 
 
-  //(*pcStream) << "\n";
-
   for (Int_t m = 0;m <phiSlice;m++) {
     delete matricesVExactA[m];
     delete matricesChargeA[m];
@@ -408,7 +409,7 @@ void UnitTestCorrectnessDistortion(const Int_t rRow,const  Int_t zColumn, const 
 /// - generate numerical calculation of distortions and corrections in sc
 /// - calc
 /// \param correctionType Int_t 0-> use regular interpolation, 1->use irregularinterpolation
-void UnitTestConsistencyDistortionZShort(const Int_t rRow, const Int_t zColumn, const Int_t phiSlice, const Int_t rRowTest, const Int_t zColumnTest, const Int_t phiSliceTest, const Int_t correctionType, TTreeSRedirector *pcStream) {
+void UnitTestConsistencyDistortionZShort(const Int_t rRow, const Int_t zColumn, const Int_t phiSlice, const Int_t rRowTest, const Int_t zColumnTest, const Int_t phiSliceTest, const Int_t correctionType, const Int_t integrationStrategy, TTreeSRedirector *pcStream) {
   const Int_t maxIter = 100;
   const Float_t convergenceError = 1e-8;
 
@@ -443,6 +444,7 @@ void UnitTestConsistencyDistortionZShort(const Int_t rRow, const Int_t zColumn, 
   sc->SetOmegaTauT1T2(-0.35,1.,1.);
 
   sc->SetCorrectionType(correctionType);
+  sc->SetIntegrationStrategy(integrationStrategy);
 
   sc->InitSpaceCharge3DPoissonIntegralDz(rRow,zColumn,phiSlice,gkMaxIter,gkConvError);
 
@@ -931,3 +933,24 @@ void PrintErrorStatus() {
 
   ::Info(TString::Format("AliTPCSpaceCharge3DDriftLineTest").Data(),"Finer grid test report can be found in https://alice.its.cern.ch/jira/browse/ATO-433");
 }
+
+
+
+void WriteProfileToPCStream(Int_t unitTestId,Int_t rRow, Int_t zColumn,Int_t phiSlice, Int_t correctionType,Int_t integrationStrategy,AliTPCSpaceCharge3DDriftLine::Profile profile,TTreeSRedirector *pcStream) { 
+
+  printf("%f\n",profile.poissonSolverTime);
+  (*pcStream) << "profile" <<
+              "unitTestId=" << unitTestId <<
+              "rRow=" << rRow   << "zColumn=" << zColumn  << "phiSlice=" << phiSlice <<
+              "correctionType=" << correctionType << 
+	      "integrationStrategy=" << integrationStrategy <<
+	      "poissonSolverTime=" << profile.poissonSolverTime <<
+	      "electricFieldTime=" << profile.electricFieldTime <<
+	      "localDistortionTime=" << profile.localDistortionTime <<
+	      "globalDistortionTime=" << profile.globalDistortionTime <<		
+	      "iteration=" << profile.iteration <<		
+              "\n";
+
+}
+
+

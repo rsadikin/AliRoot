@@ -31,6 +31,7 @@ public:
   void SetZList(Double_t *zList);
   void SetValue(Double_t *vList);
   void SetValue(TMatrixD **vList);
+  void SetValue(TMatrixD **vList,Int_t iZ);
 
   Int_t GetNR() { return fNR; }
   Int_t GetNPhi() { return fNPhi; }

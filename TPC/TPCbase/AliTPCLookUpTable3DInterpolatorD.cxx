@@ -173,6 +173,16 @@ void AliTPCLookUpTable3DInterpolatorD::CopyFromMatricesToInterpolator() {
 
 }
 
+/// copy from matrices to 1D array for interpolation algorithm
+void AliTPCLookUpTable3DInterpolatorD::CopyFromMatricesToInterpolator(Int_t iZ) {
+  fInterpolatorR->SetValue(fLookUpR,iZ);
+  fInterpolatorZ->SetValue(fLookUpZ,iZ);
+  fInterpolatorPhi->SetValue(fLookUpPhi,iZ);
+
+  // no implementation for cubic spline interpolation
+}
+
+
 /// get value of 3-components at a P(r,phi,z)
 ///
 /// \param r Double_t r position
