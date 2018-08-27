@@ -66,17 +66,16 @@ void AliTPCPoissonSolverCuda::PoissonSolver3D(TMatrixD **matricesV, TMatrixD **m
   fNZColumn = nZColumn;
   fPhiSlice = phiSlice;
 
-  if (fVPotential != NULL) delete fVPotential;
-  else {
-	fVPotential = new TMatrixF(phiSlice * nRRow,  nZColumn);
-	fromArrayOfMatrixToMatrixObj(matricesV,fVPotential,nRRow,nZColumn,phiSlice);	
-  }  
-  if (fRhoCharge != NULL) delete fRhoCharge;
-  else {
-	fRhoCharge = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
-	fromArrayOfMatrixToMatrixObj(matricesCharge,fRhoCharge,nRRow,nZColumn,phiSlice);	
-  }
+  fVPotential = new TMatrixF(phiSlice * nRRow,  nZColumn);
+  fromArrayOfMatrixToMatrixObj(matricesV,fVPotential,nRRow,nZColumn,phiSlice);	
+  fRhoCharge = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(matricesCharge,fRhoCharge,nRRow,nZColumn,phiSlice);	
   PoissonMultiGrid3D2D(fVPotential, fRhoCharge, nRRow, nZColumn, phiSlice, symmetry);
+
+  fromMatrixObjToArrayOfMatrix(fVPotential,matricesV,nRRow,nZColumn,phiSlice);
+
+  delete fVPotential;
+  delete fRhoCharge;
 }
 
 
@@ -110,31 +109,23 @@ void AliTPCPoissonSolverCuda::PoissonMultiGrid3D2D(TMatrixF *VPotential, TMatrix
 	iparam[1] = fMgParameters.nPost;			
 	iparam[2] = fMgParameters.maxLoop;
 	iparam[3] = fMgParameters.nMGCycle;
- 
-//	TMatrixF * FVPotentialExact = new TMatrixF(*fExactSolutionMem);
-//	TMatrixF * FRhoChargeDensities = new TMatrixF(*RhoChargeDensities);
+
 
 	if (fMgParameters.cycleType == kFCycle)
 	{
-		PoissonMultigrid3DSemiCoarseningGPUErrorFCycle(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), fExactSolutionMemSingle->GetMatrixArray());
+		PoissonMultigrid3DSemiCoarseningGPUErrorFCycle(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), fExactSolutionF->GetMatrixArray());
 	} else if (fMgParameters.cycleType == kWCycle) 
 	{
-		PoissonMultigrid3DSemiCoarseningGPUErrorWCycle(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), fExactSolutionMemSingle->GetMatrixArray());
+		PoissonMultigrid3DSemiCoarseningGPUErrorWCycle(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), fExactSolutionF->GetMatrixArray());
 	} else 
 	{
-		PoissonMultigrid3DSemiCoarseningGPUError(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), fExactSolutionMemSingle->GetMatrixArray());
+		PoissonMultigrid3DSemiCoarseningGPUError(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), fExactSolutionF->GetMatrixArray());
 
-	}
-	
+	}	
 	fIterations = iparam[3];
-//	delete FVPotentialExact;
-//	delete FRhoChargeDensities;
 	delete[] fparam;
 	delete[] iparam;
 }
-
-
-
 
 
 
@@ -152,3 +143,27 @@ void AliTPCPoissonSolverCuda::fromArrayOfMatrixToMatrixObj(TMatrixD **matrices, 
 
 }
 
+
+// helper function
+// copy array of matrix to an obj of matrix
+void AliTPCPoissonSolverCuda::fromMatrixObjToArrayOfMatrix(TMatrixF*obj,TMatrixD **matrices,  Int_t nRRow, Int_t nZColumn, Int_t phiSlice) {
+	TMatrixD *matrix;
+
+	for (Int_t k=0; k< phiSlice;k++) {
+		matrix = matrices[k];
+		for (Int_t i=0;i<nRRow;i++) {
+			for (Int_t j=0;j<nZColumn;j++) (*matrix)(i,j) = (*obj)(k*nRRow + i,j);
+		}
+	}
+
+}
+
+void AliTPCPoissonSolverCuda::SetExactSolution(TMatrixD **exactSolution,Int_t nRRow, Int_t nZColumn, Int_t phiSlice) {
+  	fNRRow = nRRow;
+  	fNZColumn = nZColumn;
+  	fPhiSlice = phiSlice;
+	fExactSolutionF = new TMatrixF(fNRRow * fPhiSlice,fNZColumn);
+  	fromArrayOfMatrixToMatrixObj(exactSolution,fExactSolutionF,fNRRow,fNZColumn,phiSlice);	
+	fExactPresent = kTRUE;
+	fMaxExact = TMath::Max(TMath::Abs((*fExactSolutionF).Max()), TMath::Abs((*fExactSolutionF).Min()));
+}
