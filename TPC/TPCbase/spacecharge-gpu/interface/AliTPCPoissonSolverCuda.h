@@ -33,7 +33,8 @@ public:
 
   // setter and getter
   void SetStrategy(StrategyType strategy) {fStrategy = strategy;}
-  TMatrixF *fExactSolutionMemSingle;	
+  void SetExactSolution(TMatrixD **exactSolution,Int_t nRRow, Int_t nZColumn, Int_t phiSlice);
+  TMatrixF *fExactSolutionF;	
 private:
   AliTPCPoissonSolverCuda(const AliTPCPoissonSolverCuda &);               // not implemented
   AliTPCPoissonSolverCuda &operator=(const AliTPCPoissonSolverCuda &);    // not implemented
@@ -52,6 +53,7 @@ private:
   TVectorF *fErrorConvF;
   TVectorF *fErrorExactF;
   void fromArrayOfMatrixToMatrixObj(TMatrixD **matrices, TMatrixF *obj, Int_t nRRow, Int_t nZColumn, Int_t phiSlice);
+  void fromMatrixObjToArrayOfMatrix(TMatrixF*obj,TMatrixD **matrices,  Int_t nRRow, Int_t nZColumn, Int_t phiSlice);
 /// \cond CLASSIMP
   ClassDef(AliTPCPoissonSolverCuda,5);
 /// \endcond

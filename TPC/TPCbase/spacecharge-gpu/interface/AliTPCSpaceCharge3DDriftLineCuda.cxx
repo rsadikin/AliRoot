@@ -27,6 +27,8 @@
 #include "AliSysInfo.h"
 #include "AliLog.h"
 #include "AliTPCSpaceCharge3DDriftLineCuda.h"
+#include "DifferentialGPU.h"
+#include "IntegrateEzGPU.h"
 /// \cond CLASSIMP
 ClassImp(AliTPCSpaceCharge3DDriftLineCuda)
 /// \endcond
@@ -344,6 +346,76 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
                       nRRow, nZColumn, phiSlice, gridSizeZ, ezField);
       w.Stop();
       myProfile.localDistortionTime = w.CpuTime();
+      AliInfo(Form("Step 3: Local distortion and correction: %f\n", w.CpuTime()));
+      w.Start();
+      if (fIntegrationStrategy == kNaive)
+	IntegrateDistCorrDriftLineDz(
+          lookupLocalDist,
+          matricesGDistDrDz, matricesGDistDPhiRDz, matricesGDistDz,
+          lookupLocalCorr,
+          matricesGCorrDrDz, matricesGCorrDPhiRDz, matricesGCorrDz,
+          matricesIrregularDrDz, matricesIrregularDPhiRDz, matricesIrregularDz,
+          matricesRIrregular, matricesPhiIrregular, matricesZIrregular,
+          nRRow, nZColumn, phiSlice, rList, phiList, zList
+        );
+      else
+	IntegrateDistCorrDriftLineDzWithLookUp ( 
+          lookupLocalDist,
+          matricesGDistDrDz, matricesGDistDPhiRDz, matricesGDistDz,
+          lookupLocalCorr,
+          matricesGCorrDrDz, matricesGCorrDPhiRDz, matricesGCorrDz,
+          nRRow, nZColumn, phiSlice, rList, phiList, zList
+	);
+
+      w.Stop();
+      AliInfo(Form("Step 4: Global correction/distortion: %f\n", w.CpuTime()));
+      myProfile.globalDistortionTime = w.CpuTime();
+      w.Start();
+
+      //// copy to 1D interpolator /////
+      lookupGlobalDist->CopyFromMatricesToInterpolator();
+      lookupGlobalCorr->CopyFromMatricesToInterpolator();
+      ////
+
+
+       w.Stop();
+       AliInfo(Form("Step 5: Filling up the look up: %f\n", w.CpuTime()));
+
+      if (side == 0) {
+        FillLookUpTable(lookupGlobalDist,
+                        fMatrixIntDistDrEzA, fMatrixIntDistDPhiREzA, fMatrixIntDistDzA,
+                        nRRow, nZColumn, phiSlice, rList, phiList, zList);
+
+        FillLookUpTable(lookupGlobalCorr,
+                        fMatrixIntCorrDrEzA, fMatrixIntCorrDPhiREzA, fMatrixIntCorrDzA,
+                        nRRow, nZColumn, phiSlice, rList, phiList, zList);
+
+        fLookupIntDistA->CopyFromMatricesToInterpolator();
+        if (fCorrectionType == 0)
+          fLookupIntCorrA->CopyFromMatricesToInterpolator();
+        else
+          fLookupIntCorrIrregularA->CopyFromMatricesToInterpolator();
+
+        AliInfo(" A side done");
+      }
+      if (side == 1) {
+        FillLookUpTable(lookupGlobalDist,
+                        fMatrixIntDistDrEzC, fMatrixIntDistDPhiREzC, fMatrixIntDistDzC,
+                        nRRow, nZColumn, phiSlice, rList, phiList, zList);
+
+        FillLookUpTable(lookupGlobalCorr,
+                        fMatrixIntCorrDrEzC, fMatrixIntCorrDPhiREzC, fMatrixIntCorrDzC,
+                        nRRow, nZColumn, phiSlice, rList, phiList, zList);
+
+        fLookupIntDistC->CopyFromMatricesToInterpolator();
+        if (fCorrectionType == 0)
+          fLookupIntCorrC->CopyFromMatricesToInterpolator();
+        else
+          fLookupIntCorrIrregularC->CopyFromMatricesToInterpolator();
+        AliInfo(" C side done");
+      }
+
+
     }
     fInitLookUp = kTRUE;
   }
@@ -377,4 +449,80 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
   delete lookupLocalCorr;
   delete lookupGlobalDist;
   delete lookupGlobalCorr;
+}
+
+
+
+void AliTPCSpaceCharge3DDriftLineCuda::ElectricField(TMatrixD **matricesV, TMatrixD **matricesEr, TMatrixD **matricesEPhi,
+                                                 TMatrixD **matricesEz, const Int_t nRRow, const Int_t nZColumn,
+                                                 const Int_t phiSlice,
+                                                 const Float_t gridSizeR, const Float_t gridSizePhi,
+                                                 const Float_t gridSizeZ,
+                                                 const Int_t symmetry, const Float_t innerRadius) {
+
+
+  TMatrixF * VPotential = new TMatrixF(phiSlice * nRRow,  nZColumn);
+  fromArrayOfMatrixToMatrixObj(matricesV,VPotential,nRRow,nZColumn,phiSlice);	
+  TMatrixF * Er = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(matricesEr,Er,nRRow,nZColumn,phiSlice);	
+  TMatrixF * EPhi = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(matricesEPhi,EPhi,nRRow,nZColumn,phiSlice);	
+  TMatrixF * Ez = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(matricesEz,Ez,nRRow,nZColumn,phiSlice);	
+
+  DifferentialCalculationGPU (
+	VPotential->GetMatrixArray(),
+	Er->GetMatrixArray(),
+	Ez->GetMatrixArray(),
+	EPhi->GetMatrixArray(), 
+	nRRow,
+	nZColumn,
+	phiSlice,
+	symmetry,
+	fgkIFCRadius,
+ 	fgkOFCRadius,
+	fgkTPCZ0
+  );
+
+
+  fromMatrixObjToArrayOfMatrix(Er,matricesEr,nRRow,nZColumn,phiSlice);
+  fromMatrixObjToArrayOfMatrix(EPhi,matricesEPhi,nRRow,nZColumn,phiSlice);
+  fromMatrixObjToArrayOfMatrix(Ez,matricesEz,nRRow,nZColumn,phiSlice);
+
+  delete VPotential;
+  delete Er;
+  delete EPhi;
+  delete Ez;
+}
+
+
+
+
+// helper function
+// copy array of matrix to an obj of matrix
+void AliTPCSpaceCharge3DDriftLineCuda::fromArrayOfMatrixToMatrixObj(TMatrixD **matrices, TMatrixF *obj, Int_t nRRow, Int_t nZColumn, Int_t phiSlice) {
+	TMatrixD *matrix;
+
+	for (Int_t k=0; k< phiSlice;k++) {
+		matrix = matrices[k];
+		for (Int_t i=0;i<nRRow;i++) {
+			for (Int_t j=0;j<nZColumn;j++) (*obj)(k*nRRow + i,j) = (Float_t)(*matrix)(i,j);
+		}
+	}
+
+}
+
+
+// helper function
+// copy array of matrix to an obj of matrix
+void AliTPCSpaceCharge3DDriftLineCuda::fromMatrixObjToArrayOfMatrix(TMatrixF*obj,TMatrixD **matrices,  Int_t nRRow, Int_t nZColumn, Int_t phiSlice) {
+	TMatrixD *matrix;
+
+	for (Int_t k=0; k< phiSlice;k++) {
+		matrix = matrices[k];
+		for (Int_t i=0;i<nRRow;i++) {
+			for (Int_t j=0;j<nZColumn;j++) (*matrix)(i,j) = (*obj)(k*nRRow + i,j);
+		}
+	}
+
 }
