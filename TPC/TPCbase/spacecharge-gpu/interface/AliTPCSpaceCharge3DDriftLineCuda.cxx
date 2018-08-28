@@ -99,6 +99,7 @@ AliTPCSpaceCharge3DDriftLineCuda::~AliTPCSpaceCharge3DDriftLineCuda() {
 /// 
 void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
   Int_t nRRow, Int_t nZColumn, Int_t phiSlice, Int_t maxIteration, Double_t stoppingConvergence) {
+
   Int_t phiSlicesPerSector = phiSlice / kNumSector;
   const Float_t gridSizeR = (fgkOFCRadius - fgkIFCRadius) / (nRRow - 1);
   const Float_t gridSizeZ = fgkTPCZ0 / (nZColumn - 1);
@@ -149,6 +150,7 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
 
   for (Int_t k = 0; k < phiSlice; k++) phiList[k] = gridSizePhi * k;
   for (Int_t i = 0; i < nRRow; i++) rList[i] = fgkIFCRadius + i * gridSizeR;
+
   for (Int_t j = 0; j < nZColumn; j++) zList[j] = j * gridSizeZ;
 
 
@@ -195,11 +197,11 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
   TMatrixD *matrixCharge;
   Int_t pIndex = 0;
 
- 
   // do if look up table haven't be initialized
   if (!fInitLookUp) {
     // initialize for working memory
     for (Int_t side = 0; side < 2; side++) {
+
       // zeroing global distortion/correction
       for (Int_t k = 0; k < phiSlice; k++) {
         matricesDistDrDz[k]->Zero();
@@ -328,7 +330,7 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
 
       AliInfo(Form("Step 1: Poisson solver: %f\n", w.CpuTime()));
       myProfile.poissonSolverTime = w.CpuTime();
-      myProfile.iteration = fPoissonSolver->fIterations;
+      myProfile.iteration = fPoissonSolverCuda->fIterations;
 
 
       w.Start();
@@ -346,6 +348,20 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
                       nRRow, nZColumn, phiSlice, gridSizeZ, ezField);
       w.Stop();
       myProfile.localDistortionTime = w.CpuTime();
+
+      // copy to interpolator
+      if (side == 0) {
+        lookupLocalDist->CopyFromMatricesToInterpolator();
+        lookupLocalCorr->CopyFromMatricesToInterpolator();
+        fLookupDistA->CopyFromMatricesToInterpolator();
+        fLookupElectricFieldA->CopyFromMatricesToInterpolator();
+      } else {
+        lookupLocalDist->CopyFromMatricesToInterpolator();
+        lookupLocalCorr->CopyFromMatricesToInterpolator();
+        fLookupDistC->CopyFromMatricesToInterpolator();
+        fLookupElectricFieldC->CopyFromMatricesToInterpolator();
+      }
+
       AliInfo(Form("Step 3: Local distortion and correction: %f\n", w.CpuTime()));
       w.Start();
       if (fIntegrationStrategy == kNaive)
@@ -415,10 +431,11 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
         AliInfo(" C side done");
       }
 
-
     }
+
     fInitLookUp = kTRUE;
   }
+
 
 
 
@@ -452,7 +469,7 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
 }
 
 
-
+/**
 void AliTPCSpaceCharge3DDriftLineCuda::ElectricField(TMatrixD **matricesV, TMatrixD **matricesEr, TMatrixD **matricesEPhi,
                                                  TMatrixD **matricesEz, const Int_t nRRow, const Int_t nZColumn,
                                                  const Int_t phiSlice,
@@ -494,8 +511,7 @@ void AliTPCSpaceCharge3DDriftLineCuda::ElectricField(TMatrixD **matricesV, TMatr
   delete EPhi;
   delete Ez;
 }
-
-
+**/
 
 
 // helper function
