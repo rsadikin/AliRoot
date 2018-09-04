@@ -28,6 +28,7 @@
 #include "AliLog.h"
 #include "AliTPCSpaceCharge3DDriftLineCuda.h"
 #include "DifferentialGPU.h"
+#include "LocalDistCorrDzGPU.h"
 #include "IntegrateEzGPU.h"
 /// \cond CLASSIMP
 ClassImp(AliTPCSpaceCharge3DDriftLineCuda)
@@ -469,7 +470,7 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
 }
 
 
-/**
+
 void AliTPCSpaceCharge3DDriftLineCuda::ElectricField(TMatrixD **matricesV, TMatrixD **matricesEr, TMatrixD **matricesEPhi,
                                                  TMatrixD **matricesEz, const Int_t nRRow, const Int_t nZColumn,
                                                  const Int_t phiSlice,
@@ -511,8 +512,48 @@ void AliTPCSpaceCharge3DDriftLineCuda::ElectricField(TMatrixD **matricesV, TMatr
   delete EPhi;
   delete Ez;
 }
-**/
 
+
+void AliTPCSpaceCharge3DDriftLineCuda::LocalDistCorrDz(TMatrixD **matricesEr, TMatrixD **matricesEPhi, TMatrixD **matricesEz, TMatrixD **matricesDistDrDz, TMatrixD **matricesDistDPhiRDz, TMatrixD **matricesDistDz, TMatrixD **matricesCorrDrDz,TMatrixD **matricesCorrDPhiRDz, TMatrixD **matricesCorrDz, const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice, const Float_t gridSizeZ, const Double_t ezField) {
+
+  TMatrixF * Er = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(matricesEr,Er,nRRow,nZColumn,phiSlice);	
+  TMatrixF * EPhi = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(matricesEPhi,EPhi,nRRow,nZColumn,phiSlice);	
+  TMatrixF * Ez = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(matricesEz,Ez,nRRow,nZColumn,phiSlice);	
+  TMatrixF * distDrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(matricesDistDrDz,distDrDz,nRRow,nZColumn,phiSlice);	
+  TMatrixF * distDPhiRDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(matricesDistDPhiRDz,distDPhiRDz,nRRow,nZColumn,phiSlice);	
+  TMatrixF * distDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(matricesDistDz,distDz,nRRow,nZColumn,phiSlice);	
+  TMatrixF * corrDrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(matricesCorrDrDz,corrDrDz,nRRow,nZColumn,phiSlice);	
+  TMatrixF * corrDPhiRDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(matricesCorrDPhiRDz,corrDPhiRDz,nRRow,nZColumn,phiSlice);	
+  TMatrixF * corrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(matricesCorrDz,corrDz,nRRow,nZColumn,phiSlice);	
+
+  
+  LocalDistCorrDzGPU (Er->GetMatrixArray(),Ez->GetMatrixArray(),EPhi->GetMatrixArray(), distDrDz->GetMatrixArray(),distDPhiRDz->GetMatrixArray(),distDz->GetMatrixArray(),corrDrDz->GetMatrixArray(),corrDPhiRDz->GetMatrixArray(),corrDz->GetMatrixArray(), nRRow, nZColumn, phiSlice, gridSizeZ,ezField,fC0,fC1,fgkdvdE); 
+
+  fromMatrixObjToArrayOfMatrix(distDrDz,matricesDistDrDz,nRRow,nZColumn,phiSlice);
+  fromMatrixObjToArrayOfMatrix(distDPhiRDz,matricesDistDPhiRDz,nRRow,nZColumn,phiSlice);
+  fromMatrixObjToArrayOfMatrix(distDz,matricesCorrDz,nRRow,nZColumn,phiSlice);
+  fromMatrixObjToArrayOfMatrix(corrDrDz,matricesCorrDrDz,nRRow,nZColumn,phiSlice);
+  fromMatrixObjToArrayOfMatrix(corrDPhiRDz,matricesCorrDPhiRDz,nRRow,nZColumn,phiSlice);
+  fromMatrixObjToArrayOfMatrix(corrDz,matricesCorrDz,nRRow,nZColumn,phiSlice);
+  delete Er;
+  delete EPhi;
+  delete Ez;
+  delete distDrDz;
+  delete distDPhiRDz;
+  delete distDz;
+  delete corrDrDz;
+  delete corrDPhiRDz;
+  delete corrDz;
+}
 
 // helper function
 // copy array of matrix to an obj of matrix

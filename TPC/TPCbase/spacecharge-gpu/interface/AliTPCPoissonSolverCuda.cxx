@@ -70,7 +70,10 @@ void AliTPCPoissonSolverCuda::PoissonSolver3D(TMatrixD **matricesV, TMatrixD **m
   fromArrayOfMatrixToMatrixObj(matricesV,fVPotential,nRRow,nZColumn,phiSlice);	
   fRhoCharge = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
   fromArrayOfMatrixToMatrixObj(matricesCharge,fRhoCharge,nRRow,nZColumn,phiSlice);	
+
+
   PoissonMultiGrid3D2D(fVPotential, fRhoCharge, nRRow, nZColumn, phiSlice, symmetry);
+  
 
   fromMatrixObjToArrayOfMatrix(fVPotential,matricesV,nRRow,nZColumn,phiSlice);
 

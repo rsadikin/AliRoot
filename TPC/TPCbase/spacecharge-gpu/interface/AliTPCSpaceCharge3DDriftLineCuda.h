@@ -47,13 +47,18 @@ public:
 private:
 
   AliTPCPoissonSolverCuda *fPoissonSolverCuda;
-  /**void ElectricField(TMatrixD **matricesV, TMatrixD **matricesEr, TMatrixD **matricesEPhi,
+  void ElectricField(TMatrixD **matricesV, TMatrixD **matricesEr, TMatrixD **matricesEPhi,
                                                  TMatrixD **matricesEz, const Int_t nRRow, const Int_t nZColumn,
                                                  const Int_t phiSlice,
                                                  const Float_t gridSizeR, const Float_t gridSizePhi,
                                                  const Float_t gridSizeZ,
                                                  const Int_t symmetry, const Float_t innerRadius);
-  **/
+  
+  void LocalDistCorrDz(TMatrixD **matricesEr, TMatrixD **matricesEPhi, TMatrixD **matricesEz, TMatrixD **matricesDistDrDz,
+                  TMatrixD **matricesDistDPhiRDz, TMatrixD **matricesDistDz, TMatrixD **matricesCorrDrDz,
+                  TMatrixD **matricesCorrDPhiRDz, TMatrixD **matricesCorrDz, const Int_t nRRow, const Int_t nZColumn,
+                  const Int_t phiSlice, const Float_t gridSizeZ, const Double_t ezField);
+
   
   void fromArrayOfMatrixToMatrixObj(TMatrixD **matrices, TMatrixF *obj, Int_t nRRow, Int_t nZColumn, Int_t phiSlice);
   void fromMatrixObjToArrayOfMatrix(TMatrixF*obj,TMatrixD **matrices,  Int_t nRRow, Int_t nZColumn, Int_t phiSlice);

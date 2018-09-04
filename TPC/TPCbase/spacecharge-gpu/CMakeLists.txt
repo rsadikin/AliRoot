@@ -34,7 +34,7 @@ if(LIBCUDA_SO_PATH_NOTFOUND GREATER -1)
 endif(LIBCUDA_SO_PATH_NOTFOUND GREATER -1)
 
 #set nvcc flags
-set(CUDA_NVCC_FLAGS -Wno-deprecated-gpu-targets --use_fast_math --maxrregcount 64 -O4 -Xcompiler -fPIC -Xptxas -O4 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_61,code=sm_61)
+set(CUDA_NVCC_FLAGS -Wno-deprecated-gpu-targets --use_fast_math --maxrregcount 64 -O4 -Xcompiler -fPIC -Xptxas -O4 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_60,code=sm_60)
 
 #for convenience
 set(SCGPUDIR ${AliRoot_SOURCE_DIR}/TPC/TPCbase/spacecharge-gpu)
@@ -57,6 +57,7 @@ include_directories(${AliRoot_SOURCE_DIR}/TPC/TPCbase
 cuda_compile(SCGPU_O nvcckernel/PoissonSolver3DGPU.cu)
 cuda_compile(SCGPU_1 nvcckernel/DifferentialGPU.cu)
 cuda_compile(SCGPU_2 nvcckernel/IntegrateEzGPU.cu)
+cuda_compile(SCGPU_3 nvcckernel/LocalDistCorrDzGPU.cu)
 
 
 
@@ -80,6 +81,7 @@ set(SRCS
     ${SCGPU_O}
     ${SCGPU_1}
     ${SCGPU_2}
+    ${SCGPU_3}
    )
 
 # Headers from sources
@@ -92,6 +94,7 @@ set(HDRS
     ${CINTHDRS}
     ${SCGPUDIR}/nvcckernel/PoissonSolver3DGPU.h
     ${SCGPUDIR}/nvcckernel/DifferentialGPU.h
+    ${SCGPUDIR}/nvcckernel/LocalDistCorrDzGPU.h
     ${SCGPUDIR}/nvcckernel/IntegrateEzGPU.h
   )
 
