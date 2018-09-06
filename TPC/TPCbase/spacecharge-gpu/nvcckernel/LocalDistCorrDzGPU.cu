@@ -25,7 +25,7 @@ __global__ void localDistCorrDzGPUKernel
 )
 {
 	int index, index_x, index_y, index_z;
-
+	
 	
 	float localIntErOverEz, localIntEPhiOverEz, localIntDeltaEz;	
 	index = (blockIdx.x + blockIdx.y * gridDim.x + gridDim.x * gridDim.y * blockIdx.z) * (blockDim.x * blockDim.y) + (threadIdx.y * blockDim.x) + threadIdx.x;
@@ -43,24 +43,42 @@ __global__ void localDistCorrDzGPUKernel
 
 	index_z = index % columns;
 	
-	
-	if ((index_x >= 0) && (index_x < phislices) && (index_y > 0) && (index_y < rows - 1) && (index_z > 0) && (index_z < columns - 1))
-	{
-        	localIntErOverEz = (d_gridSizeZ / 2.0) * (matEr[index_x * rows * columns + index_y * columns + index_z ] + matEr[index_x * rows * columns + index_y * columns + index_z + 1]) / (-1 * d_ezField);
-        	localIntEPhiOverEz = (d_gridSizeZ / 2.0) * (matEPhi[index_x * rows * columns + index_y * columns + index_z ] + matEPhi[index_x * rows * columns + index_y * columns + index_z + 1]) / (-1 * d_ezField);
-        	localIntDeltaEz = (d_gridSizeZ / 2.0) * (matEz[index_x * rows * columns + index_y * columns + index_z ] + matEz[index_x * rows * columns + index_y * columns + index_z + 1]) ;
 
 
-		matDistDrDz[index_x * rows  *columns + index_y *columns + index_z] = d_fC0 * localIntErOverEz + d_fC1 * localIntEPhiOverEz;
-		matDistDPhiRDz[index_x * rows  *columns + index_y *columns + index_z] = d_fC0 * localIntEPhiOverEz - d_fC1 * localIntErOverEz;
-		matDistDz[index_x * rows  *columns + index_y *columns + index_z] = d_fgkdvdE * d_fgkdvdE * localIntDeltaEz;
+	index = index_x * rows * columns + index_y * columns + index_z;	
 
-		matCorrDrDz[index_x * rows  *columns + index_y *columns + index_z + 1] = -1 * matDistDrDz[index_x * rows  *columns + index_y *columns + index_z ]; 
-		matCorrDPhiRDz[index_x * rows  *columns + index_y *columns + index_z + 1] = -1 * matDistDPhiRDz[index_x * rows  *columns + index_y *columns + index_z ]; 
-		matCorrDz[index_x * rows  *columns + index_y *columns + index_z + 1] = -1 * matDistDz[index_x * rows  *columns + index_y *columns + index_z ]; 
-
-
+	if ((index_x >= 0) && (index_x < phislices) && (index_y >= 0) && (index_y < rows ) && (index_z == columns - 1)) {
+		
+		matDistDrDz[index] = 0.0;
+		matDistDPhiRDz[index] = 0.0;
+		matDistDz[index] = 0.0;
 	}
+	if ((index_x >= 0) && (index_x < phislices) && (index_y >= 0) && (index_y < rows ) && (index_z == 0)) {
+		
+		matCorrDrDz[index] = 0.0;
+		matCorrDPhiRDz[index] = 0.0;
+		matCorrDz[index] = 0.0;
+	}
+
+
+	if ((index_x >= 0) && (index_x < phislices) && (index_y >= 0) && (index_y < rows ) && (index_z >= 0) && (index_z < columns - 1))
+	{
+        	
+		localIntErOverEz = (d_gridSizeZ / 2.0) * (matEr[index ] + matEr[index + 1]) / (-1 * d_ezField);
+        	localIntEPhiOverEz = (d_gridSizeZ / 2.0) * (matEPhi[index ] + matEPhi[index + 1]) / (-1 * d_ezField);
+        	localIntDeltaEz = (d_gridSizeZ / 2.0) * (matEz[index ] + matEz[index + 1]) ;
+
+
+		matDistDrDz[index] = d_fC0 * localIntErOverEz + d_fC1 * localIntEPhiOverEz;
+		matDistDPhiRDz[index] = d_fC0 * localIntEPhiOverEz - d_fC1 * localIntErOverEz;
+		matDistDz[index] = d_fgkdvdE * d_fgkdvdE * localIntDeltaEz;
+
+		matCorrDrDz[index+ 1] = -1 * matDistDrDz[index_x * rows  *columns + index_y *columns + index_z ]; 
+		matCorrDPhiRDz[index + 1] = -1 * matDistDPhiRDz[index_x * rows  *columns + index_y *columns + index_z ]; 
+		matCorrDz[index + 1] = -1 * matDistDz[index_x * rows  *columns + index_y *columns + index_z ]; 
+
+
+	} 
 
 }
 
@@ -173,16 +191,16 @@ extern "C" void LocalDistCorrDzGPU (
 	}
 
 	// free device memory
-	cudaFree( matEr );
-	cudaFree( matEPhi );
-	cudaFree( matEz );
+	cudaFree( d_matEr );
+	cudaFree( d_matEPhi );
+	cudaFree( d_matEz );
 	
-	cudaFree( matDistDrDz );
-	cudaFree( matDistDPhiRDz );
-	cudaFree( matDistDz );
-	cudaFree( matCorrDrDz );
-	cudaFree( matCorrDPhiRDz );
-	cudaFree( matCorrDz );
+	cudaFree( d_matDistDrDz );
+	cudaFree( d_matDistDPhiRDz );
+	cudaFree( d_matDistDz );
+	cudaFree( d_matCorrDrDz );
+	cudaFree( d_matCorrDPhiRDz );
+	cudaFree( d_matCorrDz );
 
 	error = cudaGetLastError();	
 	if ( error != cudaSuccess )

@@ -177,7 +177,101 @@ extern "C" void IntegrateEzGPU
 	cudaFree( d_arrayofEx );
 }
 
-extern "C" void IntegrateEzDriftLineGPU(float * LDistDrDz, float * LDistDphiDz, float * LDistDz, const int rows, const int columns, const int phislices, const int symmetry, const float fgkIFCRadius, const float fgkOFCRadius, const float fgkTPCZ0, float * GDistDrDz, float * GDistDphiDz, float * GDistDz, float * GCorrDrDz, float * GCorrDphiDz, float * GCorrDz, int interpolationType) {
+void IntegrateEzDriftLineGPU(float * distDrDz, float * distDPhiRDz, float * distDz, float *corrDrDz, float * corrDPhiRDz, float * corrDz,  const int rows, const int columns, const int phislices, const int symmetry, const float fgkIFCRadius, const float fgkOFCRadius, const float fgkTPCZ0, float * GDistDrDz, float * GDistDPhiRDz, float * GDistDz, float * GCorrDrDz, float * GCorrDPhiRDz, float * GCorrDz, int interpolationType) {
+
+	// initialize device array
+	float *d_distDrDz;
+	float *d_distDPhiRDz;
+	float *d_distDz;
+	float *d_corrDrDz;
+	float *d_corrDPhiRDz;
+	float *d_corrDz;
+	float *d_GDistDrDz;
+	float *d_GDistDPhiRDz;
+	float *d_GDistDz;
+	float *d_GCorrDrDz;
+	float *d_GCorrDPhiRDz;
+	float *d_GCorrDz;
+	
+	cudaError error;
+
+	cudaMalloc( &d_distDrDz, rows * columns * phislices * sizeof(float) );
+	cudaMalloc( &d_distDPhiRDz, rows * columns * phislices * sizeof(float) );
+	cudaMalloc( &d_distDz, rows * columns * phislices * sizeof(float) );
+	cudaMalloc( &d_corrDrDz, rows * columns * phislices * sizeof(float) );
+	cudaMalloc( &d_corrDPhiRDz, rows * columns * phislices * sizeof(float) );
+	cudaMalloc( &d_corrDz, rows * columns * phislices * sizeof(float) );
+	cudaMalloc( &d_GDistDrDz, rows * columns * phislices * sizeof(float) );
+	cudaMalloc( &d_GDistDPhiRDz, rows * columns * phislices * sizeof(float) );
+	cudaMalloc( &d_GDistDz, rows * columns * phislices * sizeof(float) );
+	cudaMalloc( &d_GCorrDrDz, rows * columns * phislices * sizeof(float) );
+	cudaMalloc( &d_GCorrDPhiRDz, rows * columns * phislices * sizeof(float) );
+	cudaMalloc( &d_GCorrDz, rows * columns * phislices * sizeof(float) );
+
+	error = cudaGetLastError();	
+	if ( error != cudaSuccess )
+	{    	
+		std::cout << "CUDA memory allocation error: " << cudaGetErrorString(error) << '\n';
+	}
+
+
+	// copy from CPU to GPU
+	// copy local distortion 
+	cudaMemcpy( d_distDrDz, distDrDz, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
+	cudaMemcpy( d_distDPhiRDz, distDPhiRDz, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
+	cudaMemcpy( d_distDz, distDz, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
+
+	cudaMemcpy( d_corrDrDz, corrDrDz, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
+	cudaMemcpy( d_corrDPhiRDz, corrDPhiRDz, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
+	cudaMemcpy( d_corrDz, corrDz, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
+
+	error = cudaGetLastError();	
+	if ( error != cudaSuccess )
+	{
+		std::cout << "CUDA memory copy host to device error: " << cudaGetErrorString(error) << '\n';
+	}
+
+	// call kernel
+	// set grid size and block size
+	dim3 gridSize((rows / 32) + 1, (columns / 32) + 1, phislices);
+	dim3 blockSize(32, 32);
+
+
+	
+	cudaMemcpy( GDistDrDz, d_GDistDrDz, rows * columns * phislices * sizeof(float), cudaMemcpyDeviceToHost );
+	cudaMemcpy( GDistDPhiRDz, d_GDistDPhiRDz, rows * columns * phislices * sizeof(float), cudaMemcpyDeviceToHost );
+	cudaMemcpy( GDistDz, d_GDistDz, rows * columns * phislices * sizeof(float), cudaMemcpyDeviceToHost );
+	cudaMemcpy( GCorrDrDz, d_GCorrDrDz, rows * columns * phislices * sizeof(float), cudaMemcpyDeviceToHost );
+	cudaMemcpy( GCorrDPhiRDz, d_GCorrDPhiRDz, rows * columns * phislices * sizeof(float), cudaMemcpyDeviceToHost );
+	cudaMemcpy( GCorrDz, d_GCorrDz, rows * columns * phislices * sizeof(float), cudaMemcpyDeviceToHost );
+	error = cudaGetLastError();	
+	if ( error != cudaSuccess )
+	{
+		std::cout << "CUDA memory copy device to host error: " << cudaGetErrorString(error) << '\n';
+	}
+
+	cudaFree( d_distDrDz );
+	cudaFree( d_distDPhiRDz );
+	cudaFree( d_distDz );
+	cudaFree( d_corrDrDz );
+	cudaFree( d_corrDPhiRDz );
+	cudaFree( d_corrDz );
+	cudaFree( d_GDistDrDz );
+	cudaFree( d_GDistDPhiRDz );
+	cudaFree( d_GDistDz );
+	cudaFree( d_GCorrDrDz );
+	cudaFree( d_GCorrDPhiRDz );
+	cudaFree( d_GCorrDz );
+
+	error = cudaGetLastError();	
+	if ( error != cudaSuccess )
+	{
+		std::cout << "CUDA free allocated memory error: " << cudaGetErrorString(error) << '\n';
+	}
 }
+
+
+
+
 
 
