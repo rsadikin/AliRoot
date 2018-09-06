@@ -177,7 +177,99 @@ extern "C" void IntegrateEzGPU
 	cudaFree( d_arrayofEx );
 }
 
-void IntegrateEzDriftLineGPU(float * distDrDz, float * distDPhiRDz, float * distDz, float *corrDrDz, float * corrDPhiRDz, float * corrDz,  const int rows, const int columns, const int phislices, const int symmetry, const float fgkIFCRadius, const float fgkOFCRadius, const float fgkTPCZ0, float * GDistDrDz, float * GDistDPhiRDz, float * GDistDz, float * GCorrDrDz, float * GCorrDPhiRDz, float * GCorrDz, int interpolationType) {
+
+
+__device__ void interpolateGPUKernel
+(
+	float *rLookUp,
+	float *zLookUp,
+	float *phiRLookUp,
+	float *rList,
+	float *zList,
+	float *phiList,
+	float r,
+	float z,
+	float phi,
+	float *valueR,
+	float *valueZ,
+	float *valuePhi
+)
+{
+}
+
+__global__ void integrateEzDriftLineGPUKernel
+(
+	float *distDrDz,
+	float *distDPhiRDz,
+	float *distDz, 
+	float *corrDrDz,
+	float *corrDPhiRDz,
+	float *corrDz, 
+	float *GDistDrDz,
+	float *GDistDPhiRDz,
+	float *GDistDz, 
+	float *GCorrDrDz,
+	float *GCorrDPhiRDz,
+	float *GCorrDz,
+	float *rList,
+	float *zList,
+	float *phiList, 
+	const int rows,
+	const int columns,
+	const int phislices
+)
+{
+	int index, index_x, index_y, index_z;
+	
+	
+	float gDistDrDz, gDistDPhiRDz, gDistDz;
+	float lDistDrDz, lDistDPhiRDz, lDistDz;
+	float phi,radius, z;	
+	index = (blockIdx.x + blockIdx.y * gridDim.x + gridDim.x * gridDim.y * blockIdx.z) * (blockDim.x * blockDim.y) + (threadIdx.y * blockDim.x) + threadIdx.x;
+
+	index_x = index / (rows * columns);
+	
+	if (index_x == 0)
+	{
+		index_y = index / rows;
+	}
+	else	
+	{
+		index_y = (index % (index_x * rows * columns)) / rows;
+	}
+
+	index_z = index % columns;
+	
+
+
+	index = index_x * rows * columns + index_y * columns + index_z;	
+
+	// total distortion
+	gDistDrDz = 0.0;
+	gDistDPhiRDz = 0.0;
+	gDistDz = 0.0;
+
+	// starting point
+	phi = phiList[index_x];
+	z   = zList[index_z];
+	radius = rList[index_y];
+
+	for (int jj=index_z; jj < columns;jj++) {
+		// interpolate local distortion 
+		interpolateGPUKernel(distDrDz,distDz,distDPhiRDz,rList,zList,phiList,radius,z,phi,&lDistDrDz,&lDistDz,&lDistDPhiRDz);
+		
+	}
+
+
+}
+
+
+
+
+extern "C" void IntegrateEzDriftLineGPU(float * distDrDz, float * distDPhiRDz, float * distDz, float *corrDrDz, float * corrDPhiRDz, float * corrDz,  
+	float * GDistDrDz, float * GDistDPhiRDz, float * GDistDz, float * GCorrDrDz, float * GCorrDPhiRDz, float * GCorrDz,  
+	float * rList, float * zList, float * phiList,   
+	const int rows, const int columns, const int phislices, const int integrationType) {
 
 	// initialize device array
 	float *d_distDrDz;
@@ -192,6 +284,9 @@ void IntegrateEzDriftLineGPU(float * distDrDz, float * distDPhiRDz, float * dist
 	float *d_GCorrDrDz;
 	float *d_GCorrDPhiRDz;
 	float *d_GCorrDz;
+	float *d_rList;
+	float *d_zList;
+	float *d_phiList;
 	
 	cudaError error;
 
@@ -207,6 +302,9 @@ void IntegrateEzDriftLineGPU(float * distDrDz, float * distDPhiRDz, float * dist
 	cudaMalloc( &d_GCorrDrDz, rows * columns * phislices * sizeof(float) );
 	cudaMalloc( &d_GCorrDPhiRDz, rows * columns * phislices * sizeof(float) );
 	cudaMalloc( &d_GCorrDz, rows * columns * phislices * sizeof(float) );
+	cudaMalloc( &d_rList, rows *  sizeof(float) );
+	cudaMalloc( &d_zList, columns *  sizeof(float) );
+	cudaMalloc( &d_phiList,  phislices * sizeof(float) );
 
 	error = cudaGetLastError();	
 	if ( error != cudaSuccess )
@@ -225,6 +323,9 @@ void IntegrateEzDriftLineGPU(float * distDrDz, float * distDPhiRDz, float * dist
 	cudaMemcpy( d_corrDPhiRDz, corrDPhiRDz, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
 	cudaMemcpy( d_corrDz, corrDz, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
 
+	cudaMemcpy( d_rList, rList, rows  * sizeof(float), cudaMemcpyHostToDevice );
+	cudaMemcpy( d_zList, zList, columns *  sizeof(float), cudaMemcpyHostToDevice );
+	cudaMemcpy( d_phiList, phiList,  phislices * sizeof(float), cudaMemcpyHostToDevice );
 	error = cudaGetLastError();	
 	if ( error != cudaSuccess )
 	{
@@ -262,6 +363,9 @@ void IntegrateEzDriftLineGPU(float * distDrDz, float * distDPhiRDz, float * dist
 	cudaFree( d_GCorrDrDz );
 	cudaFree( d_GCorrDPhiRDz );
 	cudaFree( d_GCorrDz );
+	cudaFree( d_rList );
+	cudaFree( d_zList );
+	cudaFree( d_phiList );
 
 	error = cudaGetLastError();	
 	if ( error != cudaSuccess )

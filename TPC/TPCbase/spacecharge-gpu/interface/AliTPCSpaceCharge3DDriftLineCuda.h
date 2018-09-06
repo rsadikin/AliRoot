@@ -59,6 +59,21 @@ private:
                   TMatrixD **matricesCorrDPhiRDz, TMatrixD **matricesCorrDz, const Int_t nRRow, const Int_t nZColumn,
                   const Int_t phiSlice, const Float_t gridSizeZ, const Double_t ezField);
 
+
+
+  void IntegrateDistCorrDriftLineDz(AliTPCLookUpTable3DInterpolatorD *lookupLocalDist, TMatrixD **matricesGDistDrDz,
+                                    TMatrixD **matricesGDistDPhiRDz, TMatrixD **matricesGDistDz,
+                                    AliTPCLookUpTable3DInterpolatorD *lookupLocalCorr, TMatrixD **matricesGCorrDrDz,
+                                    TMatrixD **matricesGCorrDPhiRDz, TMatrixD **matricesGCorrDz,
+                                    TMatrixD **matricesGCorrIrregularDrDz, TMatrixD **matricesGCorrIrregularDPhiRDz,
+                                    TMatrixD **matricesGCorrIrregularDz,
+                                    TMatrixD **matricesRIrregular, TMatrixD **matricesPhiIrregular,
+                                    TMatrixD **matricesZIrregular,
+                                    const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice,
+                                    const Double_t *rList, const Double_t *phiList, const Double_t *zList);
+
+
+
   
   void fromArrayOfMatrixToMatrixObj(TMatrixD **matrices, TMatrixF *obj, Int_t nRRow, Int_t nZColumn, Int_t phiSlice);
   void fromMatrixObjToArrayOfMatrix(TMatrixF*obj,TMatrixD **matrices,  Int_t nRRow, Int_t nZColumn, Int_t phiSlice);

@@ -555,6 +555,20 @@ void AliTPCSpaceCharge3DDriftLineCuda::LocalDistCorrDz(TMatrixD **matricesEr, TM
   delete corrDz;
 }
 
+void AliTPCSpaceCharge3DDriftLineCuda::IntegrateDistCorrDriftLineDz(AliTPCLookUpTable3DInterpolatorD *lookupLocalDist, TMatrixD **matricesGDistDrDz,
+                                    TMatrixD **matricesGDistDPhiRDz, TMatrixD **matricesGDistDz,
+                                    AliTPCLookUpTable3DInterpolatorD *lookupLocalCorr, TMatrixD **matricesGCorrDrDz,
+                                    TMatrixD **matricesGCorrDPhiRDz, TMatrixD **matricesGCorrDz,
+                                    TMatrixD **matricesGCorrIrregularDrDz, TMatrixD **matricesGCorrIrregularDPhiRDz,
+                                    TMatrixD **matricesGCorrIrregularDz,
+                                    TMatrixD **matricesRIrregular, TMatrixD **matricesPhiIrregular,
+                                    TMatrixD **matricesZIrregular,
+                                    const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice,
+                                    const Double_t *rList, const Double_t *phiList, const Double_t *zList) {
+
+
+
+}
 // helper function
 // copy array of matrix to an obj of matrix
 void AliTPCSpaceCharge3DDriftLineCuda::fromArrayOfMatrixToMatrixObj(TMatrixD **matrices, TMatrixF *obj, Int_t nRRow, Int_t nZColumn, Int_t phiSlice) {
