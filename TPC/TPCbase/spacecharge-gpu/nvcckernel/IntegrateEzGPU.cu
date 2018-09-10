@@ -8,7 +8,6 @@ __device__ __constant__ int d_scanSize;
 __device__ __constant__ int d_nRRow;
 __device__ __constant__ int d_nZColumn;
 __device__ __constant__ int d_phiSlice;
-
 __device__ __constant__ int d_interpolationOrder;
 
 __global__ void integrationCalculation
@@ -202,29 +201,21 @@ __device__ void interpolateGPUKernel
 {
 }
 
-__global__ void integrateEzDriftLineGPUKernel
+__global__ void integrateDistEzDriftLineGPUKernel
 (
 	float *distDrDz,
 	float *distDPhiRDz,
 	float *distDz, 
-	float *corrDrDz,
-	float *corrDPhiRDz,
-	float *corrDz, 
 	float *GDistDrDz,
 	float *GDistDPhiRDz,
 	float *GDistDz, 
-	float *GCorrDrDz,
-	float *GCorrDPhiRDz,
-	float *GCorrDz,
 	float *rList,
 	float *zList,
 	float *phiList,
 	float *secondDerZDistDr,
 	float *secondDerZDistDPhiR,
 	float *secondDerZDistDz,
-	float *secondDerZCorrDr,
-	float *secondDerZCorrDPhiR,
-	float *secondDerZCorrDz
+	int *currentZIndex
 )
 {
 	int index, index_x, index_y, index_z;
@@ -251,18 +242,6 @@ __global__ void integrateEzDriftLineGPUKernel
 
 	index = index_x * d_nRRow * d_nZColumn + index_y * d_nZColumn + index_z;	
 
-	// total distortion
-
-	// starting point
-	//phi = phiList[index_x];
-	//z   = zList[index_z];
-	//radius = rList[index_y];
-
-	for (int jj=index_z; jj < d_nZColumn;jj++) {
-		// interpolate local distortion 
-		//interpolateGPUKernel(distDrDz,distDz,distDPhiRDz,rList,zList,phiList,radius,z,phi,&lDistDrDz,&lDistDz,&lDistDPhiRDz);
-		
-	}
 
 
 }
@@ -302,7 +281,10 @@ extern "C" void IntegrateEzDriftLineGPU(
 	float *d_secondDerZCorrDr;
 	float *d_secondDerZCorrDPhiR;
 	float *d_secondDerZCorrDz;
-	
+
+	int *d_currentZIndex;
+	int currentZIndex;
+
 	cudaError error;
 
 	cudaMalloc( &d_distDrDz, rows * columns * phislices * sizeof(float) );
@@ -328,6 +310,10 @@ extern "C" void IntegrateEzDriftLineGPU(
 	cudaMalloc( &d_secondDerZCorrDr, rows *  columns * phislices *  sizeof(float) );
 	cudaMalloc( &d_secondDerZCorrDPhiR, rows *  columns * phislices *  sizeof(float) );
 	cudaMalloc( &d_secondDerZCorrDz, rows *  columns * phislices *  sizeof(float) );
+
+
+	cudaMalloc( &d_currentZIndex,   sizeof(int) );
+
 	error = cudaGetLastError();	
 	if ( error != cudaSuccess )
 	{    	
@@ -371,7 +357,14 @@ extern "C" void IntegrateEzDriftLineGPU(
 	dim3 gridSize((rows / 32) + 1, (columns / 32) + 1, phislices);
 	dim3 blockSize(32, 32);
 
+	for (currentZIndex = 0; currentZIndex < columns -1;currentZIndex++) {	
+		cudaMemcpy(d_currentZIndex,&currentZIndex, sizeof(int),cudaMemcpyHostToDevice);
 
+		integrateDistEzDriftLineGPUKernel<<< gridSize,blockSize >>>(d_distDrDz,d_distDPhiRDz,d_distDz,
+					  d_GDistDrDz,d_GDistDPhiRDz,d_GDistDz, 
+					  d_rList,d_zList, d_phiList,
+					  d_secondDerZDistDr, d_secondDerZDistDPhiR, d_secondDerZDistDz,d_currentZIndex);
+	}
 	
 	cudaMemcpy( GDistDrDz, d_GDistDrDz, rows * columns * phislices * sizeof(float), cudaMemcpyDeviceToHost );
 	cudaMemcpy( GDistDPhiRDz, d_GDistDPhiRDz, rows * columns * phislices * sizeof(float), cudaMemcpyDeviceToHost );
@@ -407,6 +400,7 @@ extern "C" void IntegrateEzDriftLineGPU(
 	cudaFree( d_secondDerZCorrDPhiR);
 	cudaFree( d_secondDerZCorrDz);
 
+	cudaFree( d_currentZIndex);
 	error = cudaGetLastError();	
 	if ( error != cudaSuccess )
 	{

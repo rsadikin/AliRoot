@@ -375,7 +375,7 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
           matricesRIrregular, matricesPhiIrregular, matricesZIrregular,
           nRRow, nZColumn, phiSlice, rList, phiList, zList
         );
-      else
+    else
 	IntegrateDistCorrDriftLineDzWithLookUp ( 
           lookupLocalDist,
           matricesGDistDrDz, matricesGDistDPhiRDz, matricesGDistDz,
@@ -582,7 +582,6 @@ void AliTPCSpaceCharge3DDriftLineCuda::IntegrateDistCorrDriftLineDz(AliTPCLookUp
   TMatrixF * corrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
   fromArrayOfMatrixToMatrixObj(lookupLocalCorr->GetLookUpZ(),corrDz,nRRow,nZColumn,phiSlice);	
 
-
   TMatrixF * gDistDrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
   TMatrixF * gDistDPhiRDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
   TMatrixF * gDistDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
@@ -591,29 +590,31 @@ void AliTPCSpaceCharge3DDriftLineCuda::IntegrateDistCorrDriftLineDz(AliTPCLookUp
   TMatrixF * gCorrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
 
 
-  Float_t  * secondDerZDistDrF = new Float_t(phiSlice * nRRow *  nZColumn);	  
+  Float_t  * secondDerZDistDrF = new Float_t[phiSlice * nRRow *  nZColumn];	
   Double_t * secondDerZDistDr  = lookupLocalDist->GetInterpolatorR()->GetSecondDerZ(); 	
-  Float_t  * secondDerZDistDPhiRF = new Float_t(phiSlice * nRRow *  nZColumn);	  
+  Float_t  * secondDerZDistDPhiRF = new Float_t[phiSlice * nRRow *  nZColumn];	  
   Double_t * secondDerZDistDPhiR = lookupLocalDist->GetInterpolatorPhi()->GetSecondDerZ(); 	
-  Float_t  * secondDerZDistDzF = new Float_t(phiSlice * nRRow *  nZColumn);	  
+  Float_t  * secondDerZDistDzF = new Float_t[phiSlice * nRRow *  nZColumn];	  
   Double_t * secondDerZDistDz  = lookupLocalDist->GetInterpolatorZ()->GetSecondDerZ(); 	
-  Float_t  * secondDerZCorrDrF = new Float_t(phiSlice * nRRow *  nZColumn);	  
+  Float_t  * secondDerZCorrDrF = new Float_t[phiSlice * nRRow *  nZColumn];	  
   Double_t * secondDerZCorrDr  = lookupLocalCorr->GetInterpolatorR()->GetSecondDerZ(); 	
-  Float_t  * secondDerZCorrDPhiRF = new Float_t(phiSlice * nRRow *  nZColumn);	  
+  Float_t  * secondDerZCorrDPhiRF = new Float_t[phiSlice * nRRow *  nZColumn];	  
   Double_t * secondDerZCorrDPhiR = lookupLocalCorr->GetInterpolatorPhi()->GetSecondDerZ(); 	
-  Float_t  * secondDerZCorrDzF = new Float_t(phiSlice * nRRow *  nZColumn);	  
+  Float_t  * secondDerZCorrDzF = new Float_t[phiSlice * nRRow *  nZColumn];	  
   Double_t * secondDerZCorrDz  = lookupLocalCorr->GetInterpolatorZ()->GetSecondDerZ(); 	
 
-  for (Int_t i = 0;i<phiSlice *nRRow *nZColumn;i++) {
+  for (Int_t i=0;i < phiSlice *nRRow * nZColumn;i++) {
   	secondDerZDistDrF[i] = (Float_t)secondDerZDistDr[i];
   	secondDerZDistDPhiRF[i] = (Float_t)secondDerZDistDPhiR[i];
   	secondDerZDistDzF[i] = (Float_t)secondDerZDistDz[i];
   	secondDerZCorrDrF[i] = (Float_t)secondDerZCorrDr[i];
   	secondDerZCorrDPhiRF[i] = (Float_t)secondDerZCorrDPhiR[i];
   	secondDerZCorrDzF[i] = (Float_t)secondDerZCorrDz[i];
- 
   }
 
+
+
+/**
   IntegrateEzDriftLineGPU(
 	distDrDz->GetMatrixArray(), distDPhiRDz->GetMatrixArray(), distDz->GetMatrixArray(), 
 	corrDrDz->GetMatrixArray(), corrDPhiRDz->GetMatrixArray(), corrDz->GetMatrixArray(),  
@@ -630,7 +631,7 @@ void AliTPCSpaceCharge3DDriftLineCuda::IntegrateDistCorrDriftLineDz(AliTPCLookUp
   fromMatrixObjToArrayOfMatrix(gCorrDrDz,matricesGCorrDrDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(gCorrDPhiRDz,matricesGCorrDPhiRDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(gCorrDz,matricesGCorrDz,nRRow,nZColumn,phiSlice);
-
+**/
   delete[] rListF;
   delete[] phiListF;
   delete[] zListF;
