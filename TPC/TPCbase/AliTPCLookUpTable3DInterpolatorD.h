@@ -44,6 +44,18 @@ public:
 	void CopyFromMatricesToInterpolator();
 	void CopyFromMatricesToInterpolator(Int_t iZ); // copy only iZ
 
+	TMatrixD ** GetLookUpR() { return fLookUpR;}
+	TMatrixD ** GetLookUpPhi() {return fLookUpPhi;}
+	TMatrixD ** GetLookUpZ() {return fLookUpZ;}
+	Double_t * GetRList() {return fRList;}
+	Double_t * GetPhiList() {return fPhiList;}
+	Double_t * GetZList() {return fZList;}
+
+
+
+	AliTPC3DCylindricalInterpolator * GetInterpolatorR() {return fInterpolatorR;}
+	AliTPC3DCylindricalInterpolator * GetInterpolatorPhi() {return fInterpolatorPhi;}
+	AliTPC3DCylindricalInterpolator * GetInterpolatorZ() {return fInterpolatorZ;}
 private:
 	Int_t fOrder; ///< order of interpolation
 	Int_t fNR; ///< number of grid in R

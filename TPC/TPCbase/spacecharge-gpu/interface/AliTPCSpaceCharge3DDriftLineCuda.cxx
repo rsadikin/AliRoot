@@ -523,24 +523,18 @@ void AliTPCSpaceCharge3DDriftLineCuda::LocalDistCorrDz(TMatrixD **matricesEr, TM
   TMatrixF * Ez = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
   fromArrayOfMatrixToMatrixObj(matricesEz,Ez,nRRow,nZColumn,phiSlice);	
   TMatrixF * distDrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
-  fromArrayOfMatrixToMatrixObj(matricesDistDrDz,distDrDz,nRRow,nZColumn,phiSlice);	
   TMatrixF * distDPhiRDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
-  fromArrayOfMatrixToMatrixObj(matricesDistDPhiRDz,distDPhiRDz,nRRow,nZColumn,phiSlice);	
   TMatrixF * distDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
-  fromArrayOfMatrixToMatrixObj(matricesDistDz,distDz,nRRow,nZColumn,phiSlice);	
   TMatrixF * corrDrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
-  fromArrayOfMatrixToMatrixObj(matricesCorrDrDz,corrDrDz,nRRow,nZColumn,phiSlice);	
   TMatrixF * corrDPhiRDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
-  fromArrayOfMatrixToMatrixObj(matricesCorrDPhiRDz,corrDPhiRDz,nRRow,nZColumn,phiSlice);	
   TMatrixF * corrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
-  fromArrayOfMatrixToMatrixObj(matricesCorrDz,corrDz,nRRow,nZColumn,phiSlice);	
 
   
   LocalDistCorrDzGPU (Er->GetMatrixArray(),Ez->GetMatrixArray(),EPhi->GetMatrixArray(), distDrDz->GetMatrixArray(),distDPhiRDz->GetMatrixArray(),distDz->GetMatrixArray(),corrDrDz->GetMatrixArray(),corrDPhiRDz->GetMatrixArray(),corrDz->GetMatrixArray(), nRRow, nZColumn, phiSlice, gridSizeZ,ezField,fC0,fC1,fgkdvdE); 
 
   fromMatrixObjToArrayOfMatrix(distDrDz,matricesDistDrDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(distDPhiRDz,matricesDistDPhiRDz,nRRow,nZColumn,phiSlice);
-  fromMatrixObjToArrayOfMatrix(distDz,matricesCorrDz,nRRow,nZColumn,phiSlice);
+  fromMatrixObjToArrayOfMatrix(distDz,matricesDistDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(corrDrDz,matricesCorrDrDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(corrDPhiRDz,matricesCorrDPhiRDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(corrDz,matricesCorrDz,nRRow,nZColumn,phiSlice);
@@ -567,8 +561,105 @@ void AliTPCSpaceCharge3DDriftLineCuda::IntegrateDistCorrDriftLineDz(AliTPCLookUp
                                     const Double_t *rList, const Double_t *phiList, const Double_t *zList) {
 
 
+  Float_t *rListF = new Float_t[nRRow];
+  Float_t *phiListF = new Float_t[phiSlice];
+  Float_t *zListF = new Float_t[nZColumn];
+  
+  for (Int_t i=0;i< nRRow;i++) rListF[i] = (Float_t)rList[i];
+  for (Int_t i=0;i< nZColumn;i++) zListF[i] = (Float_t)zList[i];
+  for (Int_t i=0;i< phiSlice;i++) phiListF[i] = (Float_t)phiList[i];
 
+  TMatrixF * distDrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(lookupLocalDist->GetLookUpR(),distDrDz,nRRow,nZColumn,phiSlice);	
+  TMatrixF * distDPhiRDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(lookupLocalDist->GetLookUpPhi(),distDPhiRDz,nRRow,nZColumn,phiSlice);	
+  TMatrixF * distDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(lookupLocalDist->GetLookUpZ(),distDz,nRRow,nZColumn,phiSlice);	
+  TMatrixF * corrDrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(lookupLocalCorr->GetLookUpR(),corrDrDz,nRRow,nZColumn,phiSlice);	
+  TMatrixF * corrDPhiRDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(lookupLocalCorr->GetLookUpPhi(),corrDPhiRDz,nRRow,nZColumn,phiSlice);	
+  TMatrixF * corrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  fromArrayOfMatrixToMatrixObj(lookupLocalCorr->GetLookUpZ(),corrDz,nRRow,nZColumn,phiSlice);	
+
+
+  TMatrixF * gDistDrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  TMatrixF * gDistDPhiRDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  TMatrixF * gDistDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  TMatrixF * gCorrDrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  TMatrixF * gCorrDPhiRDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+  TMatrixF * gCorrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
+
+
+  Float_t  * secondDerZDistDrF = new Float_t(phiSlice * nRRow *  nZColumn);	  
+  Double_t * secondDerZDistDr  = lookupLocalDist->GetInterpolatorR()->GetSecondDerZ(); 	
+  Float_t  * secondDerZDistDPhiRF = new Float_t(phiSlice * nRRow *  nZColumn);	  
+  Double_t * secondDerZDistDPhiR = lookupLocalDist->GetInterpolatorPhi()->GetSecondDerZ(); 	
+  Float_t  * secondDerZDistDzF = new Float_t(phiSlice * nRRow *  nZColumn);	  
+  Double_t * secondDerZDistDz  = lookupLocalDist->GetInterpolatorZ()->GetSecondDerZ(); 	
+  Float_t  * secondDerZCorrDrF = new Float_t(phiSlice * nRRow *  nZColumn);	  
+  Double_t * secondDerZCorrDr  = lookupLocalCorr->GetInterpolatorR()->GetSecondDerZ(); 	
+  Float_t  * secondDerZCorrDPhiRF = new Float_t(phiSlice * nRRow *  nZColumn);	  
+  Double_t * secondDerZCorrDPhiR = lookupLocalCorr->GetInterpolatorPhi()->GetSecondDerZ(); 	
+  Float_t  * secondDerZCorrDzF = new Float_t(phiSlice * nRRow *  nZColumn);	  
+  Double_t * secondDerZCorrDz  = lookupLocalCorr->GetInterpolatorZ()->GetSecondDerZ(); 	
+
+  for (Int_t i = 0;i<phiSlice *nRRow *nZColumn;i++) {
+  	secondDerZDistDrF[i] = (Float_t)secondDerZDistDr[i];
+  	secondDerZDistDPhiRF[i] = (Float_t)secondDerZDistDPhiR[i];
+  	secondDerZDistDzF[i] = (Float_t)secondDerZDistDz[i];
+  	secondDerZCorrDrF[i] = (Float_t)secondDerZCorrDr[i];
+  	secondDerZCorrDPhiRF[i] = (Float_t)secondDerZCorrDPhiR[i];
+  	secondDerZCorrDzF[i] = (Float_t)secondDerZCorrDz[i];
+ 
+  }
+
+  IntegrateEzDriftLineGPU(
+	distDrDz->GetMatrixArray(), distDPhiRDz->GetMatrixArray(), distDz->GetMatrixArray(), 
+	corrDrDz->GetMatrixArray(), corrDPhiRDz->GetMatrixArray(), corrDz->GetMatrixArray(),  
+	gDistDrDz->GetMatrixArray(), gDistDPhiRDz->GetMatrixArray(), gDistDz->GetMatrixArray(), 
+	gCorrDrDz->GetMatrixArray(), gCorrDPhiRDz->GetMatrixArray(), gCorrDz->GetMatrixArray(),  
+	rListF, zListF, phiListF,   
+	nRRow, nZColumn, phiSlice,  GetInterpolationOrder(),
+ 	secondDerZDistDrF, secondDerZDistDPhiRF, secondDerZDistDzF,
+	secondDerZCorrDrF, secondDerZCorrDPhiRF, secondDerZCorrDzF);
+
+  fromMatrixObjToArrayOfMatrix(gDistDrDz,matricesGDistDrDz,nRRow,nZColumn,phiSlice);
+  fromMatrixObjToArrayOfMatrix(gDistDPhiRDz,matricesGDistDPhiRDz,nRRow,nZColumn,phiSlice);
+  fromMatrixObjToArrayOfMatrix(gDistDz,matricesGDistDz,nRRow,nZColumn,phiSlice);
+  fromMatrixObjToArrayOfMatrix(gCorrDrDz,matricesGCorrDrDz,nRRow,nZColumn,phiSlice);
+  fromMatrixObjToArrayOfMatrix(gCorrDPhiRDz,matricesGCorrDPhiRDz,nRRow,nZColumn,phiSlice);
+  fromMatrixObjToArrayOfMatrix(gCorrDz,matricesGCorrDz,nRRow,nZColumn,phiSlice);
+
+  delete[] rListF;
+  delete[] phiListF;
+  delete[] zListF;
+
+  delete[] secondDerZDistDrF;
+  delete[] secondDerZDistDPhiRF;
+  delete[] secondDerZDistDzF;
+
+  delete[] secondDerZCorrDrF;
+  delete[] secondDerZCorrDPhiRF;
+  delete[] secondDerZCorrDzF;
+
+
+
+  delete gDistDrDz;	  
+  delete gDistDPhiRDz;	  
+  delete gDistDz;	  
+  delete gCorrDrDz;	  
+  delete gCorrDPhiRDz;	  
+  delete gCorrDz;	  
+
+  delete distDrDz;	  
+  delete distDPhiRDz;	  
+  delete distDz;	  
+  delete corrDrDz;	  
+  delete corrDPhiRDz;	  
+  delete corrDz;	  
 }
+
 // helper function
 // copy array of matrix to an obj of matrix
 void AliTPCSpaceCharge3DDriftLineCuda::fromArrayOfMatrixToMatrixObj(TMatrixD **matrices, TMatrixF *obj, Int_t nRRow, Int_t nZColumn, Int_t phiSlice) {

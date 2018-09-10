@@ -19,10 +19,13 @@ extern "C" void IntegrateEzGPU(float *, float *, int, int, int, float, float);
 // 1 	: linear
 // 2	: quadratic
 // 3	: qubic (TODO)
-extern "C" void IntegrateEzDriftLineGPU(float * distDrDz, float * distDPhiRDz, float * distDz, float *corrDrDz, float * corrDPhiRDz, float * corrDz,  
+extern "C" void IntegrateEzDriftLineGPU(
+	float * distDrDz, float * distDPhiRDz, float * distDz, float *corrDrDz, float * corrDPhiRDz, float * corrDz,  
 	float * GDistDrDz, float * GDistDphiDz, float * GDistDz, float * GCorrDrDz, float * GCorrDphiDz, float * GCorrDz,  
 	float * rList, float * zList, float * phiList,   
-	const int rows, const int columns, const int phislices, const int integrationType);
+	const int rows, const int columns, const int phislices, const int integrationType,
+	float * secondDerZDistDr, float *secondDerZDistDPhiR, float *secondDerZDistDz,
+	float * secondDerZCorrDr, float *secondDerZCorrDPhiR, float *secondDerZCorrDz);
 
 
 #endif

@@ -38,6 +38,7 @@ public:
   Int_t GetNZ() { return fNZ; }
   Int_t GetOrder() { return fOrder; }
 
+  Double_t * GetSecondDerZ() {return fSecondDerZ;}
 private:
   Int_t fOrder; ///< Order of interpolation, 1 - linear, 2 - quadratic, 3 >= - cubic,
   Int_t fNR; ///< Grid size in direction of R
