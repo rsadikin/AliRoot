@@ -1,6 +1,7 @@
 #include "IntegrateEzGPU.h"
 
 #include <cuda.h>
+#include <math.h>
 
 __device__ __constant__ float d_gridSizeZ;
 __device__ __constant__ float d_ezField;
@@ -9,6 +10,8 @@ __device__ __constant__ int d_nRRow;
 __device__ __constant__ int d_nZColumn;
 __device__ __constant__ int d_phiSlice;
 __device__ __constant__ int d_interpolationOrder;
+__device__ __constant__ int d_currentZIndex;
+
 
 __global__ void integrationCalculation
 (
@@ -183,23 +186,6 @@ extern "C" void IntegrateEzGPU
 
 
 
-__device__ void interpolateGPUKernel
-(
-	float *rLookUp,
-	float *zLookUp,
-	float *phiRLookUp,
-	float *rList,
-	float *zList,
-	float *phiList,
-	float r,
-	float z,
-	float phi,
-	float *valueR,
-	float *valueZ,
-	float *valuePhi
-)
-{
-}
 
 __global__ void integrateDistEzDriftLineGPUKernel
 (
@@ -214,15 +200,17 @@ __global__ void integrateDistEzDriftLineGPUKernel
 	float *phiList,
 	float *secondDerZDistDr,
 	float *secondDerZDistDPhiR,
-	float *secondDerZDistDz,
-	int *currentZIndex
+	float *secondDerZDistDz
 )
 {
 	int index, index_x, index_y, index_z;
 	
 	// float gDistDrDz, gDistDPhiRDz, gDistDz;
-	// float lDistDrDz, lDistDPhiRDz, lDistDz;
-	//float phi,radius, z;	
+	float lDistDrDz, lDistDPhiRDz, lDistDz;
+	float currentPhi,currentRadius, currentZ;
+
+
+	
 	index = (blockIdx.x + blockIdx.y * gridDim.x + gridDim.x * gridDim.y * blockIdx.z) * (blockDim.x * blockDim.y) + (threadIdx.y * blockDim.x) + threadIdx.x;
 
 	index_x = index / (d_nZColumn * d_nRRow);
@@ -243,6 +231,35 @@ __global__ void integrateDistEzDriftLineGPUKernel
 	index = index_x * d_nRRow * d_nZColumn + index_y * d_nZColumn + index_z;	
 
 
+
+	
+
+	
+	if ((index_x >= 0) && (index_x < d_phiSlice) && (index_y >= 0) && (index_y < d_nRRow ) && (index_z >= 0) && (index_z < d_nZColumn - 1) && (index_z >= d_currentZIndex)) {
+		lDistDrDz = 0.0;
+		lDistDPhiRDz = 0.0;
+		lDistDz = 0.0;
+		
+		if (index_z == d_currentZIndex) {
+			GDistDrDz[index] == 0.0;
+			GDistDPhiRDz[index] = 0.0;
+			GDistDz[index] = 0.0;
+		} 
+		currentRadius = rList[index_y] + GDistDrDz[index];
+		currentPhi = phiList[index_x] + (GDistDPhiRDz[index]/currentRadius);
+		if (currentPhi < 0.0) currentPhi = 2 * M_PI + currentPhi;
+		if (currentPhi > 2*M_PI) currentPhi = currentPhi - (2 * M_PI);
+		currentZ =  zList[d_currentZIndex] + GDistDz[index];
+
+		// get Local Distortion through interpolation
+		
+		// update global distortion
+		GDistDrDz[index] += lDistDrDz;
+		GDistDPhiRDz[index] += lDistDPhiRDz;
+		GDistDz[index] += lDistDz;
+		
+			
+	}
 
 }
 
@@ -312,7 +329,6 @@ extern "C" void IntegrateEzDriftLineGPU(
 	cudaMalloc( &d_secondDerZCorrDz, rows *  columns * phislices *  sizeof(float) );
 
 
-	cudaMalloc( &d_currentZIndex,   sizeof(int) );
 
 	error = cudaGetLastError();	
 	if ( error != cudaSuccess )
@@ -358,12 +374,12 @@ extern "C" void IntegrateEzDriftLineGPU(
 	dim3 blockSize(32, 32);
 
 	for (currentZIndex = 0; currentZIndex < columns -1;currentZIndex++) {	
-		cudaMemcpy(d_currentZIndex,&currentZIndex, sizeof(int),cudaMemcpyHostToDevice);
+		cudaMemcpyToSymbol(d_currentZIndex,&currentZIndex, 1 * sizeof(int), 0, cudaMemcpyHostToDevice);
 
 		integrateDistEzDriftLineGPUKernel<<< gridSize,blockSize >>>(d_distDrDz,d_distDPhiRDz,d_distDz,
 					  d_GDistDrDz,d_GDistDPhiRDz,d_GDistDz, 
 					  d_rList,d_zList, d_phiList,
-					  d_secondDerZDistDr, d_secondDerZDistDPhiR, d_secondDerZDistDz,d_currentZIndex);
+					  d_secondDerZDistDr, d_secondDerZDistDPhiR, d_secondDerZDistDz);
 	}
 	
 	cudaMemcpy( GDistDrDz, d_GDistDrDz, rows * columns * phislices * sizeof(float), cudaMemcpyDeviceToHost );
@@ -400,7 +416,6 @@ extern "C" void IntegrateEzDriftLineGPU(
 	cudaFree( d_secondDerZCorrDPhiR);
 	cudaFree( d_secondDerZCorrDz);
 
-	cudaFree( d_currentZIndex);
 	error = cudaGetLastError();	
 	if ( error != cudaSuccess )
 	{

@@ -70,6 +70,7 @@ AliTPCSpaceCharge3DDriftLineCuda::AliTPCSpaceCharge3DDriftLineCuda(const char *n
 ///
 AliTPCSpaceCharge3DDriftLineCuda::AliTPCSpaceCharge3DDriftLineCuda(const char *name, const char *title, Int_t nRRow, Int_t nZColumn, Int_t nPhiSlice) :
   AliTPCSpaceCharge3DDriftLine(name,title,nRRow,nZColumn, nPhiSlice) {
+	SetInterpolationOrder(5);
 }
 /// Construction for AliTPCSpaceCharge3DDriftLineCuda class
 /// Member values from params
@@ -614,7 +615,7 @@ void AliTPCSpaceCharge3DDriftLineCuda::IntegrateDistCorrDriftLineDz(AliTPCLookUp
 
 
 
-/**
+
   IntegrateEzDriftLineGPU(
 	distDrDz->GetMatrixArray(), distDPhiRDz->GetMatrixArray(), distDz->GetMatrixArray(), 
 	corrDrDz->GetMatrixArray(), corrDPhiRDz->GetMatrixArray(), corrDz->GetMatrixArray(),  
@@ -625,13 +626,14 @@ void AliTPCSpaceCharge3DDriftLineCuda::IntegrateDistCorrDriftLineDz(AliTPCLookUp
  	secondDerZDistDrF, secondDerZDistDPhiRF, secondDerZDistDzF,
 	secondDerZCorrDrF, secondDerZCorrDPhiRF, secondDerZCorrDzF);
 
+
   fromMatrixObjToArrayOfMatrix(gDistDrDz,matricesGDistDrDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(gDistDPhiRDz,matricesGDistDPhiRDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(gDistDz,matricesGDistDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(gCorrDrDz,matricesGCorrDrDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(gCorrDPhiRDz,matricesGCorrDPhiRDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(gCorrDz,matricesGCorrDz,nRRow,nZColumn,phiSlice);
-**/
+
   delete[] rListF;
   delete[] phiListF;
   delete[] zListF;
