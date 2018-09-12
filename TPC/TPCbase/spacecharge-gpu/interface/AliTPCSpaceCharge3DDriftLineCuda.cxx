@@ -70,7 +70,7 @@ AliTPCSpaceCharge3DDriftLineCuda::AliTPCSpaceCharge3DDriftLineCuda(const char *n
 ///
 AliTPCSpaceCharge3DDriftLineCuda::AliTPCSpaceCharge3DDriftLineCuda(const char *name, const char *title, Int_t nRRow, Int_t nZColumn, Int_t nPhiSlice) :
   AliTPCSpaceCharge3DDriftLine(name,title,nRRow,nZColumn, nPhiSlice) {
-	SetInterpolationOrder(5);
+	SetInterpolationOrder(1);
 }
 /// Construction for AliTPCSpaceCharge3DDriftLineCuda class
 /// Member values from params
@@ -627,6 +627,7 @@ void AliTPCSpaceCharge3DDriftLineCuda::IntegrateDistCorrDriftLineDz(AliTPCLookUp
 	secondDerZCorrDrF, secondDerZCorrDPhiRF, secondDerZCorrDzF);
 
 
+gDistDrDz->Print();
   fromMatrixObjToArrayOfMatrix(gDistDrDz,matricesGDistDrDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(gDistDPhiRDz,matricesGDistDPhiRDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(gDistDz,matricesGDistDz,nRRow,nZColumn,phiSlice);

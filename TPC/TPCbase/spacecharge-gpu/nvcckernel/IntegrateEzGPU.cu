@@ -184,6 +184,94 @@ extern "C" void IntegrateEzGPU
 	cudaFree( d_arrayofEx );
 }
 
+__device__ void interpolatePhiGPU
+(
+	float * xList,
+	int iLow,
+	int lenX,
+	float * yList,
+	float x,
+	float *y
+)
+{
+	
+  	int i0 = iLow;
+  	float xi0 = xList[iLow];
+  	int  i1 = (iLow + 1) % lenX;
+  	float xi1 = xList[i1];
+  	int  i2 = (iLow + 2) % lenX;
+  	float  xi2 = xList[i2];
+
+  	if (xi1 < xi0) xi1 = 2*M_PI + xi1;
+  	if (xi2 < xi1) xi2 = 2*M_PI + xi2;
+  	if (x < xi0) x = 2*M_PI + x;
+
+    	*y = yList[0] + (yList[1] - yList[0]) * (x - xi0) / (xi1 - xi0);
+}
+
+__device__ void interpolateGPU
+(
+	float * xList,
+	float * yList,
+	float x,
+	float * y
+)
+{
+	
+    	*y = yList[0] + (yList[1] - yList[0]) * (x - xList[0]) / (xList[1] - xList[0]);
+}
+
+__device__ void interpolate3DCylindricalGPU
+(	
+	int iLow,
+	int jLow,
+	int kLow,
+	float r,
+	float z,
+	float phi,
+	float *rList,
+	float *zList,
+	float *phiList,
+	float *valList,
+	float *interpolationValue
+)
+{
+
+  	// do for each
+	int m,index;
+	float saveArray[5];
+	float savedArray[5];
+	float zListM1[3];
+	float valueM1[3];
+
+  	for (int k = 0; k < d_interpolationOrder + 1; k++) {
+    		m = (kLow + k) % d_phiSlice;
+    		// interpolate
+    		for (int i = iLow; i < iLow + d_interpolationOrder + 1; i++) {
+      			if (d_interpolationOrder <= 2) {
+        			if (jLow >= 0) {
+          				index = m * (d_nZColumn  * d_nRRow) + i * (d_nZColumn) + jLow;
+          				interpolateGPU(&zList[jLow], &valList[index], z,&saveArray[i - iLow]);
+        			} else {
+					
+          				index = m * (d_nZColumn* d_nRRow) + i * (d_nZColumn);
+          				zListM1[0] = zList[0] - (zList[1] - zList[0]);
+          				zListM1[1] = zList[0];
+          				zListM1[2] = zList[1];
+          				valueM1[0] = valList[index] - (valList[index + 1] - valList[index]);
+          				valueM1[1] = valList[index];
+          				valueM1[2] = valList[index + 1];
+         				interpolateGPU(&zListM1[0], &valueM1[0], z,&saveArray[i-iLow]);
+        			}
+
+      			}
+    		}
+    		interpolateGPU(&rList[iLow], saveArray, r,&savedArray[k]);
+  	}
+  	interpolatePhiGPU(phiList, kLow, d_phiSlice, savedArray, phi,interpolationValue);
+}
+		
+			
 
 
 
@@ -208,7 +296,9 @@ __global__ void integrateDistEzDriftLineGPUKernel
 	// float gDistDrDz, gDistDPhiRDz, gDistDz;
 	float lDistDrDz, lDistDPhiRDz, lDistDz;
 	float currentPhi,currentRadius, currentZ;
-
+	
+	// for interpolation
+	int iLow,jLow,kLow;
 
 	
 	index = (blockIdx.x + blockIdx.y * gridDim.x + gridDim.x * gridDim.y * blockIdx.z) * (blockDim.x * blockDim.y) + (threadIdx.y * blockDim.x) + threadIdx.x;
@@ -252,7 +342,29 @@ __global__ void integrateDistEzDriftLineGPUKernel
 		currentZ =  zList[d_currentZIndex] + GDistDz[index];
 
 		// get Local Distortion through interpolation
-		
+		// get nearest index
+		for (iLow=0;iLow<d_nRRow;iLow++)  if (rList[iLow] > currentRadius) break;
+		for (jLow=0;jLow<d_nZColumn;jLow++)  if (zList[jLow] > currentZ) break;
+		for (kLow=0;kLow<d_phiSlice;kLow++)  if (phiList[kLow] > currentPhi) break;
+
+		iLow--;jLow--;kLow--;
+  		// order >= 3
+  		kLow -= (d_interpolationOrder / 2);
+  		iLow -= (d_interpolationOrder / 2);
+  		jLow -= (d_interpolationOrder / 2);
+
+  		// check if out of range
+  		if (iLow < 0) iLow = 0;
+  		if (jLow < 0) jLow = 0;
+  		if (kLow < 0) kLow = d_phiSlice + kLow;
+  		// check if out of range
+ 		if (iLow + d_interpolationOrder >= d_nRRow  - 1) iLow = d_nRRow- 1 - d_interpolationOrder;
+  		if (jLow + d_interpolationOrder >= d_nZColumn - 1) jLow = d_nZColumn - 1 - d_interpolationOrder;
+
+		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,distDrDz,&lDistDrDz);	
+		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,distDPhiRDz,&lDistDPhiRDz);	
+		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,distDz,&lDistDz);	
+			
 		// update global distortion
 		GDistDrDz[index] += lDistDrDz;
 		GDistDPhiRDz[index] += lDistDPhiRDz;
