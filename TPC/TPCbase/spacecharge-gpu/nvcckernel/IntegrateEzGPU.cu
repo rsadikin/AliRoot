@@ -10,7 +10,7 @@ __device__ __constant__ int d_nRRow;
 __device__ __constant__ int d_nZColumn;
 __device__ __constant__ int d_phiSlice;
 __device__ __constant__ int d_interpolationOrder;
-__device__ __constant__ int d_currentZIndex;
+__device__ int d_currentZIndex;
 
 
 __global__ void integrationCalculation
@@ -288,7 +288,9 @@ __global__ void integrateDistEzDriftLineGPUKernel
 	float *phiList,
 	float *secondDerZDistDr,
 	float *secondDerZDistDPhiR,
-	float *secondDerZDistDz
+	float *secondDerZDistDz,
+	int operationType,
+	int currentZIndex
 )
 {
 	int index, index_x, index_y, index_z;
@@ -320,26 +322,24 @@ __global__ void integrateDistEzDriftLineGPUKernel
 
 	index = index_x * d_nRRow * d_nZColumn + index_y * d_nZColumn + index_z;	
 
-
-
-	
-
-	
-	if ((index_x >= 0) && (index_x < d_phiSlice) && (index_y >= 0) && (index_y < d_nRRow ) && (index_z >= 0) && (index_z < d_nZColumn - 1) && (index_z >= d_currentZIndex)) {
+	if (operationType == 0) {
+	   if ((index_x >= 0) && (index_x < d_phiSlice) && (index_y >= 0) && (index_y < d_nRRow ) && (index_z >= 0) && (index_z < d_nZColumn)) 			{
+			
+		GDistDrDz[index] = 0.0;
+		GDistDPhiRDz[index] = 0.0;
+		GDistDz[index] = 0.0;
+		}
+	} else {
+	   if ((index_x >= 0) && (index_x < d_phiSlice) && (index_y >= 0) && (index_y < d_nRRow ) && (index_z >= 0) && (index_z < (d_nZColumn - 1)) && (index_z <=  currentZIndex)) {
 		lDistDrDz = 0.0;
 		lDistDPhiRDz = 0.0;
 		lDistDz = 0.0;
 		
-		if (index_z == d_currentZIndex) {
-			GDistDrDz[index] == 0.0;
-			GDistDPhiRDz[index] = 0.0;
-			GDistDz[index] = 0.0;
-		} 
 		currentRadius = rList[index_y] + GDistDrDz[index];
 		currentPhi = phiList[index_x] + (GDistDPhiRDz[index]/currentRadius);
 		if (currentPhi < 0.0) currentPhi = 2 * M_PI + currentPhi;
 		if (currentPhi > 2*M_PI) currentPhi = currentPhi - (2 * M_PI);
-		currentZ =  zList[d_currentZIndex] + GDistDz[index];
+		currentZ =  zList[currentZIndex] + GDistDz[index];
 
 		// get Local Distortion through interpolation
 		// get nearest index
@@ -371,6 +371,7 @@ __global__ void integrateDistEzDriftLineGPUKernel
 		GDistDz[index] += lDistDz;
 		
 			
+	    }
 	}
 
 }
@@ -411,7 +412,6 @@ extern "C" void IntegrateEzDriftLineGPU(
 	float *d_secondDerZCorrDPhiR;
 	float *d_secondDerZCorrDz;
 
-	int *d_currentZIndex;
 	int currentZIndex;
 
 	cudaError error;
@@ -470,6 +470,7 @@ extern "C" void IntegrateEzDriftLineGPU(
 	cudaMemcpy( d_secondDerZCorrDr, secondDerZCorrDr, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
 	cudaMemcpy( d_secondDerZCorrDPhiR, secondDerZCorrDPhiR, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
 	cudaMemcpy( d_secondDerZCorrDz, secondDerZCorrDz, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
+	
 	cudaMemcpyToSymbol( d_interpolationOrder, &interpolationOrder, 1 * sizeof(int), 0, cudaMemcpyHostToDevice );
 	cudaMemcpyToSymbol( d_nRRow, &rows, 1 * sizeof(int), 0, cudaMemcpyHostToDevice );
 	cudaMemcpyToSymbol( d_nZColumn, &columns, 1 * sizeof(int), 0, cudaMemcpyHostToDevice );
@@ -485,13 +486,16 @@ extern "C" void IntegrateEzDriftLineGPU(
 	dim3 gridSize((rows / 32) + 1, (columns / 32) + 1, phislices);
 	dim3 blockSize(32, 32);
 
-	for (currentZIndex = 0; currentZIndex < columns -1;currentZIndex++) {	
-		cudaMemcpyToSymbol(d_currentZIndex,&currentZIndex, 1 * sizeof(int), 0, cudaMemcpyHostToDevice);
-
+	integrateDistEzDriftLineGPUKernel<<< gridSize,blockSize >>>(d_distDrDz,d_distDPhiRDz,d_distDz,
+					  d_GDistDrDz,d_GDistDPhiRDz,d_GDistDz, 
+					  d_rList,d_zList, d_phiList,
+					  d_secondDerZDistDr, d_secondDerZDistDPhiR, d_secondDerZDistDz,0,currentZIndex);
+	for (currentZIndex = 0; currentZIndex < columns;currentZIndex++) {	
 		integrateDistEzDriftLineGPUKernel<<< gridSize,blockSize >>>(d_distDrDz,d_distDPhiRDz,d_distDz,
 					  d_GDistDrDz,d_GDistDPhiRDz,d_GDistDz, 
 					  d_rList,d_zList, d_phiList,
-					  d_secondDerZDistDr, d_secondDerZDistDPhiR, d_secondDerZDistDz);
+					  d_secondDerZDistDr, d_secondDerZDistDPhiR, d_secondDerZDistDz,1,currentZIndex);
+
 	}
 	
 	cudaMemcpy( GDistDrDz, d_GDistDrDz, rows * columns * phislices * sizeof(float), cudaMemcpyDeviceToHost );
@@ -503,8 +507,9 @@ extern "C" void IntegrateEzDriftLineGPU(
 	error = cudaGetLastError();	
 	if ( error != cudaSuccess )
 	{
-		std::cout << "CUDA memory copy device to host error: " << cudaGetErrorString(error) << '\n';
+		std::cout << "CUDA Global dist  memory copy device to host error: " << cudaGetErrorString(error) << '\n';
 	}
+
 
 	cudaFree( d_distDrDz );
 	cudaFree( d_distDPhiRDz );
