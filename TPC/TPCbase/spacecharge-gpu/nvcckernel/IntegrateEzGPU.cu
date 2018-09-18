@@ -206,7 +206,14 @@ __device__ void interpolatePhiGPU
   	if (xi2 < xi1) xi2 = 2*M_PI + xi2;
   	if (x < xi0) x = 2*M_PI + x;
 
-    	*y = yList[0] + (yList[1] - yList[0]) * (x - xi0) / (xi1 - xi0);
+	if (d_interpolationOrder == 1)
+    		*y = yList[0] + (yList[1] - yList[0]) * (x - xi0) / (xi1 - xi0);
+	else if (d_interpolationOrder == 2)
+	{
+    		*y = (x - xi1) * (x - xi2) * yList[0] / ((xi0 - xi1) * (xi0 - xi2));
+    		*y += (x - xi2) * (x - xi0) * yList[1] / ((xi1 - xi2) * (xi1 - xi0));
+    		*y += (x - xi0) * (x - xi1) * yList[2] / ((xi2 - xi0) * (xi2 - xi1));
+	}
 }
 
 __device__ void interpolateGPU
@@ -217,8 +224,14 @@ __device__ void interpolateGPU
 	float * y
 )
 {
-	
-    	*y = yList[0] + (yList[1] - yList[0]) * (x - xList[0]) / (xList[1] - xList[0]);
+	if(d_interpolationOrder == 1) // linear
+    		*y = yList[0] + (yList[1] - yList[0]) * (x - xList[0]) / (xList[1] - xList[0]);
+	else if (d_interpolationOrder == 2)  {
+    		*y = (x - xList[1]) * (x - xList[2]) * yList[0] / ((xList[0] - xList[1]) * (xList[0] - xList[2]));
+    		*y += (x - xList[2]) * (x - xList[0]) * yList[1] / ((xList[1] - xList[2]) * (xList[1] - xList[0]));
+    		*y += (x - xList[0]) * (x - xList[1]) * yList[2] / ((xList[2] - xList[0]) * (xList[2] - xList[1]));
+	}
+
 }
 
 __device__ void interpolate3DCylindricalGPU
@@ -249,20 +262,8 @@ __device__ void interpolate3DCylindricalGPU
     		// interpolate
     		for (int i = iLow; i < iLow + d_interpolationOrder + 1; i++) {
       			if (d_interpolationOrder <= 2) {
-        			if (jLow >= 0) {
           				index = m * (d_nZColumn  * d_nRRow) + i * (d_nZColumn) + jLow;
           				interpolateGPU(&zList[jLow], &valList[index], z,&saveArray[i - iLow]);
-        			} else {
-					
-          				index = m * (d_nZColumn* d_nRRow) + i * (d_nZColumn);
-          				zListM1[0] = zList[0] - (zList[1] - zList[0]);
-          				zListM1[1] = zList[0];
-          				zListM1[2] = zList[1];
-          				valueM1[0] = valList[index] - (valList[index + 1] - valList[index]);
-          				valueM1[1] = valList[index];
-          				valueM1[2] = valList[index + 1];
-         				interpolateGPU(&zListM1[0], &valueM1[0], z,&saveArray[i-iLow]);
-        			}
 
       			}
     		}
@@ -280,15 +281,22 @@ __global__ void integrateDistEzDriftLineGPUKernel
 	float *distDrDz,
 	float *distDPhiRDz,
 	float *distDz, 
+	float *corrDrDz,
+	float *corrDPhiRDz,
+	float *corrDz, 
 	float *GDistDrDz,
 	float *GDistDPhiRDz,
 	float *GDistDz, 
+	float *GCorrDrDz,
+	float *GCorrDPhiRDz,
+	float *GCorrDz, 
 	float *rList,
 	float *zList,
 	float *phiList,
 	float *secondDerZDistDr,
 	float *secondDerZDistDPhiR,
 	float *secondDerZDistDz,
+	float *GPrevDistDrDz,
 	int operationType,
 	int currentZIndex
 )
@@ -297,12 +305,16 @@ __global__ void integrateDistEzDriftLineGPUKernel
 	
 	// float gDistDrDz, gDistDPhiRDz, gDistDz;
 	float lDistDrDz, lDistDPhiRDz, lDistDz;
+	float lCorrDrDz, lCorrDPhiRDz, lCorrDz;
 	float currentPhi,currentRadius, currentZ;
 	
 	// for interpolation
 	int iLow,jLow,kLow;
-
+	int corrCurrentZIndex;
 	
+
+	corrCurrentZIndex = d_nZColumn - currentZIndex - 2;
+
 	index = (blockIdx.x + blockIdx.y * gridDim.x + gridDim.x * gridDim.y * blockIdx.z) * (blockDim.x * blockDim.y) + (threadIdx.y * blockDim.x) + threadIdx.x;
 
 	index_x = index / (d_nZColumn * d_nRRow);
@@ -326,19 +338,25 @@ __global__ void integrateDistEzDriftLineGPUKernel
 	   if ((index_x >= 0) && (index_x < d_phiSlice) && (index_y >= 0) && (index_y < d_nRRow ) && (index_z >= 0) && (index_z < d_nZColumn)) 			{
 			
 		GDistDrDz[index] = 0.0;
+		GPrevDistDrDz[index] = 0.0;
 		GDistDPhiRDz[index] = 0.0;
 		GDistDz[index] = 0.0;
+		GCorrDrDz[index] = 0.0;
+		GCorrDPhiRDz[index] = 0.0;
+		GCorrDz[index] = 0.0;
 		}
 	} else {
-	   if ((index_x >= 0) && (index_x < d_phiSlice) && (index_y >= 0) && (index_y < d_nRRow ) && (index_z >= 0) && (index_z < (d_nZColumn - 1)) && (index_z <=  currentZIndex)) {
+	   if ((index_x >= 0) && (index_x < d_phiSlice) && (index_y >= 0) && (index_y < d_nRRow ) && (index_z >= 0) && (index_z < d_nZColumn) && (index_z <=  currentZIndex)) {
 		lDistDrDz = 0.0;
 		lDistDPhiRDz = 0.0;
 		lDistDz = 0.0;
-		
-		currentRadius = rList[index_y] + GDistDrDz[index];
+	
+	
+		currentRadius = rList[index_y] + GPrevDistDrDz[index];
 		currentPhi = phiList[index_x] + (GDistDPhiRDz[index]/currentRadius);
-		if (currentPhi < 0.0) currentPhi = 2 * M_PI + currentPhi;
-		if (currentPhi > 2*M_PI) currentPhi = currentPhi - (2 * M_PI);
+		currentRadius = rList[index_y] + GDistDrDz[index];
+		while (currentPhi < 0.0) currentPhi = 2 * M_PI + currentPhi;
+		while (currentPhi > 2*M_PI) currentPhi = currentPhi - (2 * M_PI);
 		currentZ =  zList[currentZIndex] + GDistDz[index];
 
 		// get Local Distortion through interpolation
@@ -366,14 +384,64 @@ __global__ void integrateDistEzDriftLineGPUKernel
 		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,distDz,&lDistDz);	
 			
 		// update global distortion
+		GPrevDistDrDz[index ] = GDistDrDz[index];
 		GDistDrDz[index] += lDistDrDz;
 		GDistDPhiRDz[index] += lDistDPhiRDz;
 		GDistDz[index] += lDistDz;
 		
-			
-	    }
-	}
+		// Global distortion
+		
 
+				
+	    }
+	   if ((index_x >= 0) && (index_x < d_phiSlice) && (index_y >= 0) && (index_y < d_nRRow ) && (index_z >= 0) && (index_z < d_nZColumn - 1) && (index_z ==  corrCurrentZIndex)) {
+		
+		lCorrDrDz = 0.0;
+		lCorrDPhiRDz = 0.0;
+		lCorrDz = 0.0;
+
+		
+		GCorrDrDz[index] = GCorrDrDz[index + 1];
+		GCorrDPhiRDz[index] = GCorrDPhiRDz[index + 1];
+		GCorrDz[index] = GCorrDz[index + 1];
+	 
+	
+		currentRadius = rList[index_y] + GCorrDrDz[index];
+		currentPhi = phiList[index_x] + (GCorrDPhiRDz[index]/currentRadius);
+		while (currentPhi < 0.0) currentPhi = 2 * M_PI + currentPhi;
+		while (currentPhi > 2*M_PI) currentPhi = currentPhi - (2 * M_PI);
+		currentZ =  zList[corrCurrentZIndex + 1] + GDistDz[index];
+		
+		// get Local Distortion through interpolation
+		// get nearest index
+		for (iLow=0;iLow<d_nRRow;iLow++)  if (rList[iLow] > currentRadius) break;
+		for (jLow=0;jLow<d_nZColumn;jLow++)  if (zList[jLow] > currentZ) break;
+		for (kLow=0;kLow<d_phiSlice;kLow++)  if (phiList[kLow] > currentPhi) break;
+
+		iLow--;jLow--;kLow--;
+  		// order >= 3
+  		kLow -= (d_interpolationOrder / 2);
+  		iLow -= (d_interpolationOrder / 2);
+  		jLow -= (d_interpolationOrder / 2);
+
+  		// check if out of range
+  		if (iLow < 0) iLow = 0;
+  		if (jLow < 0) jLow = 0;
+  		if (kLow < 0) kLow = d_phiSlice + kLow;
+  		// check if out of range
+ 		if (iLow + d_interpolationOrder >= d_nRRow  - 1) iLow = d_nRRow- 1 - d_interpolationOrder;
+  		if (jLow + d_interpolationOrder >= d_nZColumn - 1) jLow = d_nZColumn - 1 - d_interpolationOrder;
+
+		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,corrDrDz,&lCorrDrDz);	
+		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,corrDPhiRDz,&lCorrDPhiRDz);	
+		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,corrDz,&lCorrDz);	
+			
+		// update global distortion
+		GCorrDrDz[index] += lCorrDrDz;
+		GCorrDPhiRDz[index] += lCorrDPhiRDz;
+		GCorrDz[index] += lCorrDz;
+   	}
+    }
 }
 
 
@@ -401,6 +469,7 @@ extern "C" void IntegrateEzDriftLineGPU(
 	float *d_GCorrDrDz;
 	float *d_GCorrDPhiRDz;
 	float *d_GCorrDz;
+	float *d_GPrevDistDrDz;
 	float *d_rList;
 	float *d_zList;
 	float *d_phiList;
@@ -423,6 +492,7 @@ extern "C" void IntegrateEzDriftLineGPU(
 	cudaMalloc( &d_corrDPhiRDz, rows * columns * phislices * sizeof(float) );
 	cudaMalloc( &d_corrDz, rows * columns * phislices * sizeof(float) );
 	cudaMalloc( &d_GDistDrDz, rows * columns * phislices * sizeof(float) );
+	cudaMalloc( &d_GPrevDistDrDz, rows * columns * phislices * sizeof(float) );
 	cudaMalloc( &d_GDistDPhiRDz, rows * columns * phislices * sizeof(float) );
 	cudaMalloc( &d_GDistDz, rows * columns * phislices * sizeof(float) );
 	cudaMalloc( &d_GCorrDrDz, rows * columns * phislices * sizeof(float) );
@@ -462,15 +532,17 @@ extern "C" void IntegrateEzDriftLineGPU(
 	cudaMemcpy( d_rList, rList, rows  * sizeof(float), cudaMemcpyHostToDevice );
 	cudaMemcpy( d_zList, zList, columns *  sizeof(float), cudaMemcpyHostToDevice );
 	cudaMemcpy( d_phiList, phiList,  phislices * sizeof(float), cudaMemcpyHostToDevice );
-	
-	cudaMemcpy( d_secondDerZDistDr, secondDerZDistDr, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
-	cudaMemcpy( d_secondDerZDistDPhiR, secondDerZDistDPhiR, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
-	cudaMemcpy( d_secondDerZDistDz, secondDerZDistDz, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
 
-	cudaMemcpy( d_secondDerZCorrDr, secondDerZCorrDr, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
-	cudaMemcpy( d_secondDerZCorrDPhiR, secondDerZCorrDPhiR, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
-	cudaMemcpy( d_secondDerZCorrDz, secondDerZCorrDz, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
+	if (d_interpolationOrder > 2) {	
+		cudaMemcpy( d_secondDerZDistDr, secondDerZDistDr, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
+		cudaMemcpy( d_secondDerZDistDPhiR, secondDerZDistDPhiR, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
+		cudaMemcpy( d_secondDerZDistDz, secondDerZDistDz, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
+
+		cudaMemcpy( d_secondDerZCorrDr, secondDerZCorrDr, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
+		cudaMemcpy( d_secondDerZCorrDPhiR, secondDerZCorrDPhiR, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
+		cudaMemcpy( d_secondDerZCorrDz, secondDerZCorrDz, rows * columns * phislices * sizeof(float), cudaMemcpyHostToDevice );
 	
+	}
 	cudaMemcpyToSymbol( d_interpolationOrder, &interpolationOrder, 1 * sizeof(int), 0, cudaMemcpyHostToDevice );
 	cudaMemcpyToSymbol( d_nRRow, &rows, 1 * sizeof(int), 0, cudaMemcpyHostToDevice );
 	cudaMemcpyToSymbol( d_nZColumn, &columns, 1 * sizeof(int), 0, cudaMemcpyHostToDevice );
@@ -486,15 +558,20 @@ extern "C" void IntegrateEzDriftLineGPU(
 	dim3 gridSize((rows / 32) + 1, (columns / 32) + 1, phislices);
 	dim3 blockSize(32, 32);
 
-	integrateDistEzDriftLineGPUKernel<<< gridSize,blockSize >>>(d_distDrDz,d_distDPhiRDz,d_distDz,
-					  d_GDistDrDz,d_GDistDPhiRDz,d_GDistDz, 
+	integrateDistEzDriftLineGPUKernel<<< gridSize,blockSize >>>(
+					  d_distDrDz,d_distDPhiRDz,d_distDz,
+					  d_corrDrDz,d_corrDPhiRDz,d_corrDz,
+					  d_GDistDrDz,d_GDistDPhiRDz,d_GDistDz,
+					  d_GCorrDrDz,d_GCorrDPhiRDz,d_GCorrDz, 
 					  d_rList,d_zList, d_phiList,
-					  d_secondDerZDistDr, d_secondDerZDistDPhiR, d_secondDerZDistDz,0,currentZIndex);
+					  d_secondDerZDistDr, d_secondDerZDistDPhiR, d_secondDerZDistDz, d_GPrevDistDrDz, 0,currentZIndex);
 	for (currentZIndex = 0; currentZIndex < columns;currentZIndex++) {	
 		integrateDistEzDriftLineGPUKernel<<< gridSize,blockSize >>>(d_distDrDz,d_distDPhiRDz,d_distDz,
-					  d_GDistDrDz,d_GDistDPhiRDz,d_GDistDz, 
+					  d_corrDrDz,d_corrDPhiRDz,d_corrDz,
+					  d_GDistDrDz,d_GDistDPhiRDz,d_GDistDz,
+					  d_GCorrDrDz,d_GCorrDPhiRDz,d_GCorrDz,
 					  d_rList,d_zList, d_phiList,
-					  d_secondDerZDistDr, d_secondDerZDistDPhiR, d_secondDerZDistDz,1,currentZIndex);
+					  d_secondDerZDistDr, d_secondDerZDistDPhiR, d_secondDerZDistDz, d_GPrevDistDrDz, 1,currentZIndex);
 
 	}
 	
@@ -518,6 +595,7 @@ extern "C" void IntegrateEzDriftLineGPU(
 	cudaFree( d_corrDPhiRDz );
 	cudaFree( d_corrDz );
 	cudaFree( d_GDistDrDz );
+	cudaFree( d_GPrevDistDrDz );
 	cudaFree( d_GDistDPhiRDz );
 	cudaFree( d_GDistDz );
 	cudaFree( d_GCorrDrDz );

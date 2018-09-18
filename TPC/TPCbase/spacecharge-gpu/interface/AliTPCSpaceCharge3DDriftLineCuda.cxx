@@ -590,7 +590,6 @@ void AliTPCSpaceCharge3DDriftLineCuda::IntegrateDistCorrDriftLineDz(AliTPCLookUp
   TMatrixF * gCorrDPhiRDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
   TMatrixF * gCorrDz = new TMatrixF(phiSlice * nRRow,  nZColumn);	  
 
-
   Float_t  * secondDerZDistDrF = new Float_t[phiSlice * nRRow *  nZColumn];	
   Double_t * secondDerZDistDr  = lookupLocalDist->GetInterpolatorR()->GetSecondDerZ(); 	
   Float_t  * secondDerZDistDPhiRF = new Float_t[phiSlice * nRRow *  nZColumn];	  
@@ -604,16 +603,16 @@ void AliTPCSpaceCharge3DDriftLineCuda::IntegrateDistCorrDriftLineDz(AliTPCLookUp
   Float_t  * secondDerZCorrDzF = new Float_t[phiSlice * nRRow *  nZColumn];	  
   Double_t * secondDerZCorrDz  = lookupLocalCorr->GetInterpolatorZ()->GetSecondDerZ(); 	
 
-  for (Int_t i=0;i < phiSlice *nRRow * nZColumn;i++) {
-  	secondDerZDistDrF[i] = (Float_t)secondDerZDistDr[i];
-  	secondDerZDistDPhiRF[i] = (Float_t)secondDerZDistDPhiR[i];
-  	secondDerZDistDzF[i] = (Float_t)secondDerZDistDz[i];
-  	secondDerZCorrDrF[i] = (Float_t)secondDerZCorrDr[i];
-  	secondDerZCorrDPhiRF[i] = (Float_t)secondDerZCorrDPhiR[i];
-  	secondDerZCorrDzF[i] = (Float_t)secondDerZCorrDz[i];
+  if (GetInterpolationOrder() > 2) {
+  	for (Int_t i=0;i < phiSlice *nRRow * nZColumn;i++) {
+  		secondDerZDistDrF[i] = (Float_t)secondDerZDistDr[i];
+  		secondDerZDistDPhiRF[i] = (Float_t)secondDerZDistDPhiR[i];
+  		secondDerZDistDzF[i] = (Float_t)secondDerZDistDz[i];
+  		secondDerZCorrDrF[i] = (Float_t)secondDerZCorrDr[i];
+  		secondDerZCorrDPhiRF[i] = (Float_t)secondDerZCorrDPhiR[i];
+  		secondDerZCorrDzF[i] = (Float_t)secondDerZCorrDz[i];
+  	}
   }
-
- distDrDz->Print();
 
   IntegrateEzDriftLineGPU(
 	distDrDz->GetMatrixArray(), distDPhiRDz->GetMatrixArray(), distDz->GetMatrixArray(), 
@@ -621,11 +620,10 @@ void AliTPCSpaceCharge3DDriftLineCuda::IntegrateDistCorrDriftLineDz(AliTPCLookUp
 	gDistDrDz->GetMatrixArray(), gDistDPhiRDz->GetMatrixArray(), gDistDz->GetMatrixArray(), 
 	gCorrDrDz->GetMatrixArray(), gCorrDPhiRDz->GetMatrixArray(), gCorrDz->GetMatrixArray(),  
 	rListF, zListF, phiListF,   
-	nRRow, nZColumn, phiSlice,  1,
+	nRRow, nZColumn, phiSlice,  GetInterpolationOrder(),
  	secondDerZDistDrF, secondDerZDistDPhiRF, secondDerZDistDzF,
 	secondDerZCorrDrF, secondDerZCorrDPhiRF, secondDerZCorrDzF);
 
-  gDistDrDz->Print();
   fromMatrixObjToArrayOfMatrix(gDistDrDz,matricesGDistDrDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(gDistDPhiRDz,matricesGDistDPhiRDz,nRRow,nZColumn,phiSlice);
   fromMatrixObjToArrayOfMatrix(gDistDz,matricesGDistDz,nRRow,nZColumn,phiSlice);
