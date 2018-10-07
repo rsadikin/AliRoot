@@ -184,6 +184,82 @@ extern "C" void IntegrateEzGPU
 	cudaFree( d_arrayofEx );
 }
 
+/// Solving cubic splines for system of splines
+///
+/// \param xList Double_t[] known position x
+/// \param yList Double_t[] known y = f(x)
+/// \param n Int_t length of splines
+/// \param y2List Double_t[] calculated $d^2Y$ spline (output)
+/// \param skip memory offset for xList
+///
+__device__ void initCubicSplineGPU(float *xList, float *yList, const int n, float *y2List, const int skip) {
+  float u[6];
+  float sig, p, qn, un;
+
+  y2List[0] = 0.0;
+  u[0] = 0.0; //natural condition
+
+
+  for (int i = 1; i <= n - 2; i++) {
+    sig = (xList[i] - xList[i - 1]) / (xList[i + 1] - xList[i - 1]);
+    p = sig * y2List[(i - 1) * skip] + 2.0;
+    y2List[i * skip] = (sig - 1.0) / p;
+    u[i] = (yList[(i + 1) * skip] - yList[i * skip]) / (xList[i + 1] - xList[i]) -
+           (yList[i * skip] - yList[(i - 1) * skip]) / (xList[i] - xList[i - 1]);
+    u[i] = (6.0 * u[i] / (xList[i + 1] - xList[i - 1]) - sig * u[i - 1]) / p;
+  }
+
+  qn = un = 0.0;
+
+  y2List[(n - 1) * skip] = (un - qn * u[n - 2]) / (qn * y2List[(n - 2) * skip] + 1.0);
+  for (int k = n - 2; k >= 0; k--)
+    y2List[k * skip] = y2List[k * skip] * y2List[(k + 1) * skip] + u[k];
+}
+
+/// Interpolate initialized cubic spline
+///
+/// \param xList
+/// \param yList
+/// \param y2List
+/// \param nxList
+/// \param nyList
+/// \param ny2List
+/// \param x
+/// \param skip
+/// \return
+__device__  void interpolateCubicSplineGPU(float *xList, float *yList,  float *y2List, const int nxList, const int nyList, const int ny2List, float x, int skip, float *y) {
+  int klo, khi, k;
+  float h, b, a;
+  klo = 0;
+  khi = nxList - 1;
+
+  while (khi - klo > 1) {
+    k = (khi + klo) >> 1;
+    if (xList[k] > x) khi = k;
+    else klo = k;
+  }
+
+  h = xList[khi] - xList[klo];
+  
+  if (fabsf(h) < 1e-10) {
+    *y =  0.0;
+    return;
+  }
+
+  a = (xList[khi] - x) / h;
+  b = (x - xList[klo]) / h;
+
+  *y = a * yList[klo] + b * yList[khi] +
+               ((a * a * a - a) * y2List[klo * skip] + (b * b * b - b) * y2List[khi * skip]) * (h * h) / 6.0;
+
+  
+
+}
+
+
+
+
+// interpolation for phi direction
 __device__ void interpolatePhiGPU
 (
 	float * xList,
@@ -201,6 +277,9 @@ __device__ void interpolatePhiGPU
   	float xi1 = xList[i1];
   	int  i2 = (iLow + 2) % lenX;
   	float  xi2 = xList[i2];
+    	float y2List[6];
+   	float xListTemp[6];
+	float dPhi;
 
   	if (xi1 < xi0) xi1 = 2*M_PI + xi1;
   	if (xi2 < xi1) xi2 = 2*M_PI + xi2;
@@ -213,9 +292,19 @@ __device__ void interpolatePhiGPU
     		*y = (x - xi1) * (x - xi2) * yList[0] / ((xi0 - xi1) * (xi0 - xi2));
     		*y += (x - xi2) * (x - xi0) * yList[1] / ((xi1 - xi2) * (xi1 - xi0));
     		*y += (x - xi0) * (x - xi1) * yList[2] / ((xi2 - xi0) * (xi2 - xi1));
+	} else {
+		
+    		dPhi = xList[1] - xList[0];
+		for (int i = 0; i < d_interpolationOrder + 1; i++) {
+		      xListTemp[i] = xList[iLow] + (dPhi * i);
+	    	}
+	 	if ((xListTemp[0] - x) > 1e-10) x = x + 2 * M_PI;
+	        initCubicSplineGPU(xListTemp, yList, d_interpolationOrder + 1, y2List, 1);
+    		interpolateCubicSplineGPU(xListTemp, yList, y2List,d_interpolationOrder + 1, d_interpolationOrder + 1, d_interpolationOrder + 1, x, 1,y);
 	}
 }
 
+// interpolate in 1D
 __device__ void interpolateGPU
 (
 	float * xList,
@@ -224,12 +313,19 @@ __device__ void interpolateGPU
 	float * y
 )
 {
+	float y2List[6];
+	int   nPoints;
+	nPoints = d_interpolationOrder + 1;
 	if(d_interpolationOrder == 1) // linear
     		*y = yList[0] + (yList[1] - yList[0]) * (x - xList[0]) / (xList[1] - xList[0]);
 	else if (d_interpolationOrder == 2)  {
     		*y = (x - xList[1]) * (x - xList[2]) * yList[0] / ((xList[0] - xList[1]) * (xList[0] - xList[2]));
     		*y += (x - xList[2]) * (x - xList[0]) * yList[1] / ((xList[1] - xList[2]) * (xList[1] - xList[0]));
     		*y += (x - xList[0]) * (x - xList[1]) * yList[2] / ((xList[2] - xList[0]) * (xList[2] - xList[1]));
+	} else {
+
+    		initCubicSplineGPU(xList, yList, nPoints, y2List, 1);
+		interpolateCubicSplineGPU(xList, yList, y2List, nPoints, nPoints, nPoints, x, 1,y);
 	}
 
 }
@@ -246,26 +342,30 @@ __device__ void interpolate3DCylindricalGPU
 	float *zList,
 	float *phiList,
 	float *valList,
+	float *secondDerZ,
 	float *interpolationValue
 )
 {
 
   	// do for each
 	int m,index;
-	float saveArray[5];
-	float savedArray[5];
-	float zListM1[3];
-	float valueM1[3];
+	float saveArray[6];
+	float savedArray[6];
 
   	for (int k = 0; k < d_interpolationOrder + 1; k++) {
     		m = (kLow + k) % d_phiSlice;
     		// interpolate
     		for (int i = iLow; i < iLow + d_interpolationOrder + 1; i++) {
       			if (d_interpolationOrder <= 2) {
-          				index = m * (d_nZColumn  * d_nRRow) + i * (d_nZColumn) + jLow;
-          				interpolateGPU(&zList[jLow], &valList[index], z,&saveArray[i - iLow]);
+          			index = m * (d_nZColumn  * d_nRRow) + i * (d_nZColumn) + jLow;
+          			interpolateGPU(&zList[jLow], &valList[index], z,&saveArray[i - iLow]);
 
-      			}
+      			} else {
+				// cubic spline
+        			index = m * (d_nZColumn * d_nRRow) + i * (d_nZColumn);
+        			interpolateCubicSplineGPU(zList, &valList[index], &secondDerZ[index], d_nZColumn, d_nZColumn, d_nZColumn,z, 1,&saveArray[i-iLow]);
+			
+			}
     		}
     		interpolateGPU(&rList[iLow], saveArray, r,&savedArray[k]);
   	}
@@ -296,6 +396,9 @@ __global__ void integrateDistEzDriftLineGPUKernel
 	float *secondDerZDistDr,
 	float *secondDerZDistDPhiR,
 	float *secondDerZDistDz,
+	float *secondDerZCorrDr,
+	float *secondDerZCorrDPhiR,
+	float *secondDerZCorrDz,
 	float *GPrevDistDrDz,
 	int operationType,
 	int currentZIndex
@@ -379,9 +482,9 @@ __global__ void integrateDistEzDriftLineGPUKernel
  		if (iLow + d_interpolationOrder >= d_nRRow  - 1) iLow = d_nRRow- 1 - d_interpolationOrder;
   		if (jLow + d_interpolationOrder >= d_nZColumn - 1) jLow = d_nZColumn - 1 - d_interpolationOrder;
 
-		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,distDrDz,&lDistDrDz);	
-		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,distDPhiRDz,&lDistDPhiRDz);	
-		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,distDz,&lDistDz);	
+		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,distDrDz,secondDerZDistDr,&lDistDrDz);	
+		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,distDPhiRDz,secondDerZDistDPhiR,&lDistDPhiRDz);	
+		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,distDz,secondDerZDistDz,&lDistDz);	
 			
 		// update global distortion
 		GPrevDistDrDz[index ] = GDistDrDz[index];
@@ -432,9 +535,9 @@ __global__ void integrateDistEzDriftLineGPUKernel
  		if (iLow + d_interpolationOrder >= d_nRRow  - 1) iLow = d_nRRow- 1 - d_interpolationOrder;
   		if (jLow + d_interpolationOrder >= d_nZColumn - 1) jLow = d_nZColumn - 1 - d_interpolationOrder;
 
-		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,corrDrDz,&lCorrDrDz);	
-		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,corrDPhiRDz,&lCorrDPhiRDz);	
-		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,corrDz,&lCorrDz);	
+		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,corrDrDz,secondDerZCorrDr,&lCorrDrDz);	
+		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,corrDPhiRDz,secondDerZCorrDPhiR,&lCorrDPhiRDz);	
+		interpolate3DCylindricalGPU(iLow,jLow,kLow,currentRadius,currentZ,currentPhi,rList,zList,phiList,corrDz,secondDerZCorrDz,&lCorrDz);	
 			
 		// update global distortion
 		GCorrDrDz[index] += lCorrDrDz;
@@ -564,14 +667,18 @@ extern "C" void IntegrateEzDriftLineGPU(
 					  d_GDistDrDz,d_GDistDPhiRDz,d_GDistDz,
 					  d_GCorrDrDz,d_GCorrDPhiRDz,d_GCorrDz, 
 					  d_rList,d_zList, d_phiList,
-					  d_secondDerZDistDr, d_secondDerZDistDPhiR, d_secondDerZDistDz, d_GPrevDistDrDz, 0,currentZIndex);
+					  d_secondDerZDistDr, d_secondDerZDistDPhiR, d_secondDerZDistDz, 
+					  d_secondDerZCorrDr, d_secondDerZCorrDPhiR, d_secondDerZCorrDz, 
+					  d_GPrevDistDrDz, 0,currentZIndex);
 	for (currentZIndex = 0; currentZIndex < columns;currentZIndex++) {	
 		integrateDistEzDriftLineGPUKernel<<< gridSize,blockSize >>>(d_distDrDz,d_distDPhiRDz,d_distDz,
 					  d_corrDrDz,d_corrDPhiRDz,d_corrDz,
 					  d_GDistDrDz,d_GDistDPhiRDz,d_GDistDz,
 					  d_GCorrDrDz,d_GCorrDPhiRDz,d_GCorrDz,
 					  d_rList,d_zList, d_phiList,
-					  d_secondDerZDistDr, d_secondDerZDistDPhiR, d_secondDerZDistDz, d_GPrevDistDrDz, 1,currentZIndex);
+					  d_secondDerZDistDr, d_secondDerZDistDPhiR, d_secondDerZDistDz, 
+					  d_secondDerZCorrDr, d_secondDerZCorrDPhiR, d_secondDerZCorrDz, 
+					  d_GPrevDistDrDz, 1,currentZIndex);
 
 	}
 	

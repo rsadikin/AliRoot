@@ -819,6 +819,7 @@ extern "C" void PoissonMultigrid3DSemiCoarseningGPUError
 	const int Symmetry,
 	float *fparam,
 	int *iparam,
+	bool isExactPresent,
 	float *errorConv,
 	float *errorExact,
 	float *VPotentialExact //allocation in the client
@@ -1758,6 +1759,7 @@ extern "C" void PoissonMultigrid3DSemiCoarseningGPUErrorFCycle
 	const int Symmetry,
 	float *fparam,
 	int *iparam,
+	bool isExactPresent,	
 	float *errorConv,
 	float *errorExact,
 	float *VPotentialExact //allocation in the client
@@ -1954,7 +1956,10 @@ extern "C" void PoissonMultigrid3DSemiCoarseningGPUErrorFCycle
 	
 	// max exact
 	
-	float maxAbsExact = GetAbsMax(VPotentialExact, RRow * PhiSlice * ZColumn);
+	float maxAbsExact = 1.0;
+
+	if (isExactPresent == true)
+		maxAbsExact = GetAbsMax(VPotentialExact, RRow * PhiSlice * ZColumn);
 	
 	
 
@@ -2072,6 +2077,7 @@ extern "C" void PoissonMultigrid3DSemiCoarseningGPUErrorFCycle
 
 		prolongation2DHalfNoAdd<<< grid_BlockPerGrid, grid_ThreadPerBlock >>>( d_VPotential, grid_RRow, grid_ZColumn, grid_PhiSlice );
 
+
 		
 
 		// just 
@@ -2079,7 +2085,10 @@ extern "C" void PoissonMultigrid3DSemiCoarseningGPUErrorFCycle
 		// max exact
 		cudaMemcpy( d_VPotentialPrev + grid_StartPos, d_VPotential + grid_StartPos, grid_RRow * grid_ZColumn * PhiSlice * sizeof(float), cudaMemcpyDeviceToDevice );
 				
-		float maxAbsExact = GetAbsMax(VPotentialExact, RRow * PhiSlice * ZColumn);
+		float maxAbsExact = 1.0;
+
+		if (isExactPresent == true)
+			maxAbsExact = GetAbsMax(VPotentialExact, RRow * PhiSlice * ZColumn);
 		dim3 error_BlockPerGrid((grid_RRow < 16) ? 1 : (grid_RRow / 16), (grid_ZColumn < 16) ? 1 : (grid_ZColumn / 16), PhiSlice);
 		dim3 error_ThreadPerBlock(16, 16);		
 
@@ -2091,7 +2100,7 @@ extern "C" void PoissonMultigrid3DSemiCoarseningGPUErrorFCycle
 				
 			if (step == gridFrom) {
 				cudaMemcpy( temp_VPotential, d_VPotential, RRow * ZColumn * PhiSlice * sizeof(float), cudaMemcpyDeviceToHost );
-				errorExact[cycle] = GetErrorNorm2(temp_VPotential, VPotentialExact, RRow * PhiSlice,ZColumn, maxAbsExact); 
+				if (isExactPresent == true )errorExact[cycle] = GetErrorNorm2(temp_VPotential, VPotentialExact, RRow * PhiSlice,ZColumn, maxAbsExact); 
 			}
 
 

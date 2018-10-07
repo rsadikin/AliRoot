@@ -39,7 +39,8 @@ extern "C" void PoissonMultigrid3DSemiCoarseningGPUError
 	const int PhiSlice,   
 	const int Symmetry,
 	float *fparam,
-	int *iparam,	
+	int *iparam,
+	bool isExactPresent,	
 	float *errorConv,
 	float *errorExact,
 	float *VPotentialExact //allocation in the client
@@ -71,6 +72,7 @@ extern "C" void PoissonMultigrid3DSemiCoarseningGPUErrorFCycle
 	const int Symmetry,
 	float *fparam,
 	int *iparam,
+	bool isExactPresent,	
 	float *errorConv,
 	float *errorExact,
 	float *VPotentialExact //allocation in the client

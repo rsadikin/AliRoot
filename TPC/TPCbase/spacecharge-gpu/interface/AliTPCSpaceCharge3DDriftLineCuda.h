@@ -37,11 +37,10 @@ public:
                                           Double_t stopConvergence);
 
   
-  void SetPoissonSolver(AliTPCPoissonSolverCuda *poissonSolver) {
-    fPoissonSolverCuda = poissonSolver;
-  }
+  void ForceInitSpaceCharge3DPoissonIntegralDz(Int_t nRRow, Int_t nZColumn, Int_t phiSlice, Int_t maxIteration, Double_t stoppingConvergence);
 
-  AliTPCPoissonSolver *GetPoissonSolver() { return fPoissonSolver; }
+  void SetPoissonSolver(AliTPCPoissonSolverCuda *poissonSolver) {fPoissonSolverCuda  = poissonSolver;} 
+  AliTPCPoissonSolver *GetPoissonSolver() { return fPoissonSolverCuda; }
 
 
 private:

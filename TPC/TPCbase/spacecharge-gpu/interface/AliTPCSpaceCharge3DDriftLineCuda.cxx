@@ -70,7 +70,6 @@ AliTPCSpaceCharge3DDriftLineCuda::AliTPCSpaceCharge3DDriftLineCuda(const char *n
 ///
 AliTPCSpaceCharge3DDriftLineCuda::AliTPCSpaceCharge3DDriftLineCuda(const char *name, const char *title, Int_t nRRow, Int_t nZColumn, Int_t nPhiSlice) :
   AliTPCSpaceCharge3DDriftLine(name,title,nRRow,nZColumn, nPhiSlice) {
-	SetInterpolationOrder(5);
 }
 /// Construction for AliTPCSpaceCharge3DDriftLineCuda class
 /// Member values from params
@@ -113,7 +112,7 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
 
   // memory allocation for temporary matrices:
   // potential (boundary values), charge distribution
-  TMatrixD *matricesV[phiSlice], *matricesCharge[phiSlice];
+  TMatrixD **matricesV, *matricesCharge[phiSlice];
   TMatrixD *matricesEr[phiSlice], *matricesEPhi[phiSlice], *matricesEz[phiSlice];
   TMatrixD *matricesDistDrDz[phiSlice], *matricesDistDPhiRDz[phiSlice], *matricesDistDz[phiSlice];
   TMatrixD *matricesCorrDrDz[phiSlice], *matricesCorrDPhiRDz[phiSlice], *matricesCorrDz[phiSlice];
@@ -121,7 +120,7 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
   TMatrixD *matricesGCorrDrDz[phiSlice], *matricesGCorrDPhiRDz[phiSlice], *matricesGCorrDz[phiSlice];
 
   for (Int_t k = 0; k < phiSlice; k++) {
-    matricesV[k] = new TMatrixD(nRRow, nZColumn);
+    //  matricesV[k] = new TMatrixD(nRRow, nZColumn);
     matricesCharge[k] = new TMatrixD(nRRow, nZColumn);
     matricesEr[k] = new TMatrixD(nRRow, nZColumn);
     matricesEPhi[k] = new TMatrixD(nRRow, nZColumn);
@@ -231,6 +230,8 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
         matricesLookUpCharge = fMatrixChargeA;
         chargeInterpolator = fInterpolatorChargeA;
         potentialInterpolator = fInterpolatorPotentialA;
+
+	matricesV = fMatrixPotentialA;
         fLookupDistA->SetLookUpR(matricesDistDrDz);
         fLookupDistA->SetLookUpPhi(matricesDistDPhiRDz);
         fLookupDistA->SetLookUpZ(matricesDistDz);
@@ -252,6 +253,7 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
         matricesRIrregular = fMatrixRListIrregularC;
         matricesZIrregular = fMatrixZListIrregularC;
         matricesLookUpCharge = fMatrixChargeC;
+	matricesV = fMatrixPotentialC;
         chargeInterpolator = fInterpolatorChargeC;
         potentialInterpolator = fInterpolatorPotentialC;
         fLookupDistC->SetLookUpR(matricesDistDrDz);
@@ -282,7 +284,6 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
           for (Int_t j = 0; j < nZColumn; j++) {
             z0 = j * gridSizeZ;
             (*matrixCharge)(i, j) = chargeInterpolator->GetValue(rList[i], phiList[k], zList[j]);
-            (*matrixV)(i, j) = 0.0; // fill zeros
             if (fFormulaPotentialV == NULL) {
               // boundary IFC
               if (i == 0) {
@@ -443,7 +444,7 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
 
   // memory de-allocation for temporary matrices
   for (Int_t k = 0; k < phiSlice; k++) {
-    delete matricesV[k];
+//    delete matricesV[k];
     delete matricesCharge[k];
     delete matricesEr[k];
     delete matricesEPhi[k];
@@ -659,6 +660,24 @@ void AliTPCSpaceCharge3DDriftLineCuda::IntegrateDistCorrDriftLineDz(AliTPCLookUp
   delete corrDPhiRDz;	  
   delete corrDz;	  
 }
+
+/// Force creating look-up table of Correction/Distortion by integration following
+/// drift line.
+///
+/// \param nRRow Int_t Number of nRRow in r-direction
+/// \param nZColumn Int_t Number of nZColumn in z-direction
+/// \param phiSlice Int_t Number of phi slices in \f$ phi \f$ direction
+/// \param maxIteration Int_t Maximum iteration for poisson solver
+/// \param stoppingConvergence Convergence error stopping condition for poisson solver
+///
+void AliTPCSpaceCharge3DDriftLineCuda::ForceInitSpaceCharge3DPoissonIntegralDz
+  (Int_t nRRow, Int_t nZColumn, Int_t phiSlice,
+   Int_t maxIteration, Double_t stoppingConvergence) {
+  fInitLookUp = kFALSE;
+  InitSpaceCharge3DPoissonIntegralDz(nRRow, nZColumn, phiSlice, maxIteration, stoppingConvergence);
+}
+
+
 
 // helper function
 // copy array of matrix to an obj of matrix

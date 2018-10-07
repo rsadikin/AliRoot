@@ -51,10 +51,18 @@ AliTPCPoissonSolverCuda::AliTPCPoissonSolverCuda(const char *name, const char *t
 	fErrorExactF = new TVectorF(fMgParameters.nMGCycle);
 }
 
+AliTPCPoissonSolverCuda::AliTPCPoissonSolverCuda(const char *name, const char *title, Int_t nRRow, Int_t nZColumn, Int_t nPhiSlice) : AliTPCPoissonSolver(name, title) {	
+	fNRRow = nRRow;
+	fNZColumn = nZColumn;
+ 	fPhiSlice = nPhiSlice;
+	fErrorConvF = new TVectorF(fMgParameters.nMGCycle);
+	fErrorExactF = new TVectorF(fMgParameters.nMGCycle);
+}
 /// destructor
 AliTPCPoissonSolverCuda::~AliTPCPoissonSolverCuda() {
 	delete fErrorConvF;
 	delete fErrorExactF;
+	delete fExactSolutionF;
 }
 
 /// function overriding
@@ -116,13 +124,18 @@ void AliTPCPoissonSolverCuda::PoissonMultiGrid3D2D(TMatrixF *VPotential, TMatrix
 
 	if (fMgParameters.cycleType == kFCycle)
 	{
-		PoissonMultigrid3DSemiCoarseningGPUErrorFCycle(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), fExactSolutionF->GetMatrixArray());
+		if (fExactPresent == kTRUE) { 
+			PoissonMultigrid3DSemiCoarseningGPUErrorFCycle(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fExactPresent, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), fExactSolutionF->GetMatrixArray());
+		} else {
+			PoissonMultigrid3DSemiCoarseningGPUErrorFCycle(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fExactPresent, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), NULL);
+
+		}
 	} else if (fMgParameters.cycleType == kWCycle) 
 	{
 		PoissonMultigrid3DSemiCoarseningGPUErrorWCycle(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), fExactSolutionF->GetMatrixArray());
 	} else 
 	{
-		PoissonMultigrid3DSemiCoarseningGPUError(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), fExactSolutionF->GetMatrixArray());
+		PoissonMultigrid3DSemiCoarseningGPUError(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fExactPresent, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), fExactSolutionF->GetMatrixArray());
 
 	}	
 	fIterations = iparam[3];

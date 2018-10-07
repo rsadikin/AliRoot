@@ -190,6 +190,8 @@ void AliTPCSpaceCharge3DDriftLine::InitAllocateMemory() {
     fMatrixChargeC[k] = new TMatrixD(fNRRows, fNZColumns);
     fMatrixChargeInverseA[k] = new TMatrixD(fNRRows, fNZColumns);
     fMatrixChargeInverseC[k] = new TMatrixD(fNRRows, fNZColumns);
+    fMatrixPotentialA[k] = new TMatrixD(fNRRows, fNZColumns);
+    fMatrixPotentialC[k] = new TMatrixD(fNRRows, fNZColumns);
   }
 
   fLookupIntDistA =
@@ -362,6 +364,9 @@ AliTPCSpaceCharge3DDriftLine::~AliTPCSpaceCharge3DDriftLine() {
     delete fMatrixChargeC[k];
     delete fMatrixChargeInverseA[k];
     delete fMatrixChargeInverseC[k];
+
+    delete fMatrixPotentialA[k];
+    delete fMatrixPotentialC[k];
   }
   delete[] fListR;
   delete[] fListPhi;
@@ -469,7 +474,7 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
 
   // memory allocation for temporary matrices:
   // potential (boundary values), charge distribution
-  TMatrixD *matricesV[phiSlice], *matricesCharge[phiSlice];
+  TMatrixD **matricesV, *matricesCharge[phiSlice];
   TMatrixD *matricesEr[phiSlice], *matricesEPhi[phiSlice], *matricesEz[phiSlice];
   TMatrixD *matricesDistDrDz[phiSlice], *matricesDistDPhiRDz[phiSlice], *matricesDistDz[phiSlice];
   TMatrixD *matricesCorrDrDz[phiSlice], *matricesCorrDPhiRDz[phiSlice], *matricesCorrDz[phiSlice];
@@ -477,7 +482,7 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
   TMatrixD *matricesGCorrDrDz[phiSlice], *matricesGCorrDPhiRDz[phiSlice], *matricesGCorrDz[phiSlice];
 
   for (Int_t k = 0; k < phiSlice; k++) {
-    matricesV[k] = new TMatrixD(nRRow, nZColumn);
+    //matricesV[k] = new TMatrixD(nRRow, nZColumn);
     matricesCharge[k] = new TMatrixD(nRRow, nZColumn);
     matricesEr[k] = new TMatrixD(nRRow, nZColumn);
     matricesEPhi[k] = new TMatrixD(nRRow, nZColumn);
@@ -552,6 +557,9 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
   Double_t *potentialBoundary = NULL;
   TMatrixD *matrixV;
   TMatrixD *matrixCharge;
+  // for potential
+  TMatrixD **matricesVPotential;
+
   Int_t pIndex = 0;
 
   // do if look up table haven't be initialized
@@ -583,6 +591,9 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
         matricesRIrregular = fMatrixRListIrregularA;
         matricesZIrregular = fMatrixZListIrregularA;
         matricesLookUpCharge = fMatrixChargeA;
+
+
+	matricesV = fMatrixPotentialA;
         chargeInterpolator = fInterpolatorChargeA;
         potentialInterpolator = fInterpolatorPotentialA;
         fLookupDistA->SetLookUpR(matricesDistDrDz);
@@ -606,6 +617,7 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
         matricesRIrregular = fMatrixRListIrregularC;
         matricesZIrregular = fMatrixZListIrregularC;
         matricesLookUpCharge = fMatrixChargeC;
+	matricesV = fMatrixPotentialA;
         chargeInterpolator = fInterpolatorChargeC;
         potentialInterpolator = fInterpolatorPotentialC;
         fLookupDistC->SetLookUpR(matricesDistDrDz);
@@ -636,7 +648,7 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
           for (Int_t j = 0; j < nZColumn; j++) {
             z0 = j * gridSizeZ;
             (*matrixCharge)(i, j) = chargeInterpolator->GetValue(rList[i], phiList[k], zList[j]);
-            (*matrixV)(i, j) = 0.0; // fill zeros
+            //(*matrixV)(i, j) = 0.0; // fill zeros
             if (fFormulaPotentialV == NULL) {
               // boundary IFC
               if (i == 0) {
@@ -796,7 +808,7 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
 
   // memory de-allocation for temporary matrices
   for (Int_t k = 0; k < phiSlice; k++) {
-    delete matricesV[k];
+    //delete matricesV[k];
     delete matricesCharge[k];
     delete matricesEr[k];
     delete matricesEPhi[k];
@@ -2969,7 +2981,45 @@ TH2F *AliTPCSpaceCharge3DDriftLine::CreateHistogramCorrDZInXY(Float_t z, Int_t n
 void AliTPCSpaceCharge3DDriftLine::SetInputSpaceCharge(TH3 *hisSpaceCharge3D, Double_t norm) {
   fHistogram3DSpaceCharge = hisSpaceCharge3D;
   fInitLookUp = kFALSE;
+
+  Double_t rMin = hisSpaceCharge3D->GetYaxis()->GetBinCenter(0);
+  Double_t rMax = hisSpaceCharge3D->GetYaxis()->GetBinUpEdge(hisSpaceCharge3D->GetYaxis()->GetNbins());
+  Double_t zMin = hisSpaceCharge3D->GetZaxis()->GetBinCenter(0);
+  Double_t zMax = hisSpaceCharge3D->GetZaxis()->GetBinCenter(hisSpaceCharge3D->GetZaxis()->GetNbins());
+  
+
+
+  Double_t radius0, z0, phi0;
+  TMatrixD *charge;
+  for (Int_t iSide = 0;iSide < 2;iSide++) {
+   for (Int_t k = 0; k < fNPhiSlices; k++) {
+    if (iSide == 0)
+      charge = fMatrixChargeA[k];
+    else
+      charge = fMatrixChargeC[k];
+
+    phi0 = fListPhi[k];
+    for (Int_t i = 0; i < fNRRows; i++) {
+      radius0 = fListR[i];
+      for (Int_t j = 0; j < fNZColumns; j++) {
+        z0 = fListZ[j];
+	if (iSide == 1) z0 = -1 * z0;
+
+        if (radius0 > rMin && radius0 < rMax && z0 > zMin && z0 < zMax) {
+          (*charge)(i, j) = norm * InterpolatePhi(hisSpaceCharge3D, phi0, radius0, z0);
+        }
+      } // end j
+    } // end i
+   } // end phi
+  }
+
+  fInterpolatorChargeA->SetValue(fMatrixChargeA);
+  fInterpolatorChargeA->InitCubicSpline();
+  fInterpolatorChargeC->SetValue(fMatrixChargeC);
+  fInterpolatorChargeC->InitCubicSpline();
+
 }
+
 /// SetInputCharge
 ///
 /// \param hisSpaceCharge3D TH3* histogram for space charge

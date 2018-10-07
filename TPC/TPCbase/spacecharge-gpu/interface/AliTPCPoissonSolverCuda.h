@@ -25,6 +25,7 @@
 class AliTPCPoissonSolverCuda : public AliTPCPoissonSolver {
 public:
   AliTPCPoissonSolverCuda();
+  AliTPCPoissonSolverCuda(const char *name, const char *title, Int_t nRRow, Int_t nZColumn, Int_t nPhiSlice);
   AliTPCPoissonSolverCuda(const char *name, const char *title);
   virtual ~AliTPCPoissonSolverCuda();
   void PoissonSolver3D(TMatrixD **matricesV, TMatrixD **matricesChargeDensities, Int_t nRRow, Int_t nZColumn,

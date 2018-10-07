@@ -354,6 +354,11 @@ protected:
   TMatrixD *fMatrixChargeInverseA[kNMaxPhi];  //[kNMaxPhi] Matrices for storing charge densities from backward algorithm side A
   TMatrixD *fMatrixChargeInverseC[kNMaxPhi]; //[kNMaxPhi] Matrices for storing charge densities from backward algorithm side C
 
+  TMatrixD *fMatrixPotentialA[kNMaxPhi]; //[kNMaxPhi] Matrices for storing potential side A
+  TMatrixD *fMatrixPotentialC[kNMaxPhi]; //[kNMaxPhi] Matrices for storing potential side C
+  
+
+
   AliTPC3DCylindricalInterpolator *fInterpolatorChargeA; //-> interpolator for charge densities side A
   AliTPC3DCylindricalInterpolator *fInterpolatorChargeC; //-> interpolator for charge densities side C
   AliTPC3DCylindricalInterpolator *fInterpolatorPotentialA; //-> interpolator for charge densities side A
