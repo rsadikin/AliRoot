@@ -120,7 +120,7 @@ protected:
   Double_t GetMaxExact() { return fMaxExact; };
 
   Double_t GetExactError(TMatrixD **currentMatricesV, TMatrixD **tempArrayV, const Int_t phiSlice);
-  Double_t GetConvergenceError(TMatrixD **currentMatricesV, TMatrixD **prevArrayV, const Int_t phiSlice);
+  Double_t GetConvergenceError(TMatrixD **currentMatricesV, TMatrixD **prevArrayV,  const Int_t phiSlice);
   Double_t fMaxExact;
   Bool_t fExactPresent;
 

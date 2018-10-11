@@ -617,7 +617,7 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
         matricesRIrregular = fMatrixRListIrregularC;
         matricesZIrregular = fMatrixZListIrregularC;
         matricesLookUpCharge = fMatrixChargeC;
-	matricesV = fMatrixPotentialA;
+	matricesV = fMatrixPotentialC;
         chargeInterpolator = fInterpolatorChargeC;
         potentialInterpolator = fInterpolatorPotentialC;
         fLookupDistC->SetLookUpR(matricesDistDrDz);
@@ -680,11 +680,11 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
       AliInfo(Form("Step 0: Preparing Charge interpolator: %f\n", w.CpuTime()));
       AliTPCPoissonSolver::fgConvergenceError = stoppingConvergence;
 
-      fPoissonSolver->SetStrategy(AliTPCPoissonSolver::kMultiGrid);
-      (fPoissonSolver->fMgParameters).cycleType = AliTPCPoissonSolver::kFCycle;
-      (fPoissonSolver->fMgParameters).isFull3D = kFALSE;
-      (fPoissonSolver->fMgParameters).nMGCycle = maxIteration;
-      (fPoissonSolver->fMgParameters).maxLoop = 6;
+      //fPoissonSolver->SetStrategy(AliTPCPoissonSolver::kMultiGrid);
+      //(fPoissonSolver->fMgParameters).cycleType = AliTPCPoissonSolver::kFCycle;
+      //(fPoissonSolver->fMgParameters).isFull3D = kFALSE;
+      //(fPoissonSolver->fMgParameters).nMGCycle = maxIteration;
+      //(fPoissonSolver->fMgParameters).maxLoop = 6;
 
 
       w.Start();
@@ -697,8 +697,8 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
 
 
       AliInfo(Form("Step 1: Poisson solver: %f\n", w.CpuTime()));
-      myProfile.poissonSolverTime = w.CpuTime();
-      myProfile.iteration = fPoissonSolver->fIterations;
+      if (side == 0) myProfile.poissonSolverTime = w.CpuTime();
+      if (side == 0) myProfile.iteration = fPoissonSolver->fIterations;
 
 
       w.Start();

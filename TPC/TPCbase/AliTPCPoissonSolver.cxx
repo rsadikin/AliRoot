@@ -863,7 +863,7 @@ void AliTPCPoissonSolver::PoissonMultiGrid3D2D(TMatrixD **matricesV, TMatrixD **
         tvChargeFMG[count - 1][k] = new TMatrixD(tnRRow, tnZColumn);
       }
       Restrict3D(tvChargeFMG[count - 1], tvChargeFMG[count - 2], tnRRow, tnZColumn, phiSlice, phiSlice);
-      RestrictBoundary3D(tvArrayV[count - 1], tvArrayV[count - 2], tnRRow, tnZColumn, phiSlice, phiSlice);
+      Restrict3D(tvArrayV[count - 1], tvArrayV[count - 2], tnRRow, tnZColumn, phiSlice, phiSlice);
     }
     iOne = 2 * iOne; // doubling
     jOne = 2 * jOne; // doubling
@@ -937,7 +937,7 @@ void AliTPCPoissonSolver::PoissonMultiGrid3D2D(TMatrixD **matricesV, TMatrixD **
           (*fError)(mgCycle) = GetExactError(matricesV, tvPrevArrayV[count], phiSlice);
         }
         /// if already converge just break move to finer grid
-        if (convergenceError <= fgConvergenceError) {
+        if (convergenceError < fgConvergenceError) {
           fIterations = mgCycle + 1;
           break;
         }
@@ -960,11 +960,13 @@ void AliTPCPoissonSolver::PoissonMultiGrid3D2D(TMatrixD **matricesV, TMatrixD **
 
       // convergence error
       convergenceError = GetConvergenceError(tvArrayV[0], tvPrevArrayV[0], phiSlice);
+
+
       (*fErrorConvergenceNormInf)(mgCycle) = convergenceError;
       (*fError)(mgCycle) = GetExactError(matricesV, tvPrevArrayV[0], phiSlice);
 
       // if error already achieved then stop mg iteration
-      if (convergenceError <= fgConvergenceError) {
+      if (convergenceError < fgConvergenceError) {
         fIterations = mgCycle + 1;
         break;
       }
@@ -1247,7 +1249,7 @@ void AliTPCPoissonSolver::PoissonMultiGrid3D(TMatrixD **matricesV, TMatrixD **ma
           (*fError)(mgCycle) = GetExactError(matricesV, tvPrevArrayV[count], phiSlice);
         }
         /// if already converge just break move to finer grid
-        if (convergenceError <= fgConvergenceError) {
+        if (convergenceError < fgConvergenceError) {
           fIterations = mgCycle + 1;
           break;
         }
@@ -1275,8 +1277,8 @@ void AliTPCPoissonSolver::PoissonMultiGrid3D(TMatrixD **matricesV, TMatrixD **ma
       (*fErrorConvergenceNormInf)(mgCycle) = convergenceError;
       (*fError)(mgCycle) = GetExactError(matricesV, tvPrevArrayV[0], phiSlice);
       // if error already achieved then stop mg iteration
-      if (convergenceError <= fgConvergenceError) {
-        //AliInfo(Form("Exact Err: %f, MG Iteration : %d", (*fError)(mgCycle), mgCycle));
+      if (convergenceError < fgConvergenceError) {
+        AliInfo(Form("Exact Err: %f, MG Iteration : %d", (*fError)(mgCycle), mgCycle));
         fIterations = mgCycle + 1;
         break;
       }
@@ -2836,9 +2838,9 @@ AliTPCPoissonSolver::GetConvergenceError(TMatrixD **matricesCurrentV, TMatrixD *
     // absolute
     (*prevArrayV[m]) = (*prevArrayV[m]) - (*matricesCurrentV[m]);
 
-    if (prevArrayV[m]->E2Norm() > error) error = prevArrayV[m]->E2Norm();
+    error += prevArrayV[m]->E2Norm() * prevArrayV[m]->E2Norm();
   }
-  return error;
+  return error / (prevArrayV[0]->GetNcols() * prevArrayV[0]->GetNrows() * phiSlice);
 }
 
 

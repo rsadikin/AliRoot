@@ -315,11 +315,11 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
       AliInfo(Form("Step 0: Preparing Charge interpolator: %f\n", w.CpuTime()));
       AliTPCPoissonSolver::fgConvergenceError = stoppingConvergence;
 
-      fPoissonSolverCuda->SetStrategy(AliTPCPoissonSolver::kMultiGrid);
-      (fPoissonSolverCuda->fMgParameters).cycleType = AliTPCPoissonSolver::kFCycle;
-      (fPoissonSolverCuda->fMgParameters).isFull3D = kFALSE;
-      (fPoissonSolverCuda->fMgParameters).nMGCycle = maxIteration;
-      (fPoissonSolverCuda->fMgParameters).maxLoop = 6;
+      // fPoissonSolverCuda->SetStrategy(AliTPCPoissonSolver::kMultiGrid);
+      // (fPoissonSolverCuda->fMgParameters).cycleType = AliTPCPoissonSolver::kFCycle;
+      // (fPoissonSolverCuda->fMgParameters).isFull3D = kFALSE;
+      // (fPoissonSolverCuda->fMgParameters).nMGCycle = maxIteration;
+      // (fPoissonSolverCuda->fMgParameters).maxLoop = 6;
 
 
       w.Start();
@@ -332,8 +332,8 @@ void AliTPCSpaceCharge3DDriftLineCuda::InitSpaceCharge3DPoissonIntegralDz(
 
 
       AliInfo(Form("Step 1: Poisson solver: %f\n", w.CpuTime()));
-      myProfile.poissonSolverTime = w.CpuTime();
-      myProfile.iteration = fPoissonSolverCuda->fIterations;
+      if (side == 0)myProfile.poissonSolverTime = w.CpuTime();
+      if (side == 0)myProfile.iteration = fPoissonSolverCuda->fIterations;
 
 
       w.Start();
