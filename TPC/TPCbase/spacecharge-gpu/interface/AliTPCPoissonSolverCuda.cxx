@@ -135,9 +135,12 @@ void AliTPCPoissonSolverCuda::PoissonMultiGrid3D2D(TMatrixF *VPotential, TMatrix
 		PoissonMultigrid3DSemiCoarseningGPUErrorWCycle(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), fExactSolutionF->GetMatrixArray());
 	} else 
 	{
-		PoissonMultigrid3DSemiCoarseningGPUError(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fExactPresent, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), fExactSolutionF->GetMatrixArray());
-
-	}	
+		if (fExactPresent == kTRUE) {
+			PoissonMultigrid3DSemiCoarseningGPUError(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fExactPresent, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), fExactSolutionF->GetMatrixArray());
+		} else {
+			PoissonMultigrid3DSemiCoarseningGPUError(VPotential->GetMatrixArray(), RhoChargeDensities->GetMatrixArray(),nRRow, nZColumn,phiSlice,symmetry, fparam, iparam, fExactPresent, fErrorConvF->GetMatrixArray(), fErrorExactF->GetMatrixArray(), NULL);
+		}
+	} 	
 	fIterations = iparam[3];
 	delete[] fparam;
 	delete[] iparam;
