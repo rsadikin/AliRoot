@@ -116,8 +116,12 @@ AliTPCLookUpTable3DInterpolatorIrregularD::~AliTPCLookUpTable3DInterpolatorIrreg
 
 /// copy from matrices to the interpolator
 void AliTPCLookUpTable3DInterpolatorIrregularD::CopyFromMatricesToInterpolator() {
+
+  printf("set Irregular R grid\n"); 	
   fInterpolatorR->SetValue(fMatricesRValue, fMatricesRPoint, fMatricesPhiPoint, fMatricesZPoint);
+  printf("set Irregular Z grid\n"); 	
   fInterpolatorZ->SetValue(fMatricesZValue, fMatricesRPoint, fMatricesPhiPoint, fMatricesZPoint);
+  printf("set Irregular Phi grid\n"); 	
   fInterpolatorPhi->SetValue(fMatricesPhiValue, fMatricesRPoint, fMatricesPhiPoint, fMatricesZPoint);
 }
 
@@ -194,5 +198,13 @@ void AliTPCLookUpTable3DInterpolatorIrregularD::GetValue(
   rValue = fInterpolatorR->GetValue(r, phi, z, rIndex, phiIndex, zIndex, startR, startPhi, startZ);
   phiValue = fInterpolatorPhi->GetValue(r, phi, z, rIndex, phiIndex, zIndex, startR, startPhi, startZ);
   zValue = fInterpolatorZ->GetValue(r, phi, z, rIndex, phiIndex, zIndex, startR, startPhi, startZ);
+}
+
+// using kdtree
+void AliTPCLookUpTable3DInterpolatorIrregularD::GetValue(
+        Double_t r, Double_t phi, Double_t z, Double_t &rValue, Double_t &phiValue, Double_t &zValue) {
+  rValue = fInterpolatorR->GetValue(r, phi, z);
+  phiValue = fInterpolatorPhi->GetValue(r, phi, z);
+  zValue = fInterpolatorZ->GetValue(r, phi, z);
 }
 

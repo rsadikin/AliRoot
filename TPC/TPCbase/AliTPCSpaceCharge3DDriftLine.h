@@ -108,6 +108,7 @@ public:
 	Double_t electricFieldTime;
 	Double_t localDistortionTime;
 	Double_t globalDistortionTime;
+	Double_t interpolationInitTime;
 	Int_t iteration;
   };
 
