@@ -2600,8 +2600,8 @@ void AliTPCSpaceCharge3DDriftLine::GetCorrectionCylACIrregular(const Float_t x[]
   }
   else {
     //fLookupIntCorrIrregularC->GetValue(r, phi, -z, dR, dRPhi, dZ, iAnchor, kAnchor, -zAnchor, fNRRows / 8 + 1,
-    //                                   fNPhiSlices / 8 + 1, fNZColumns / 8 + 1, 0);
-    fLookupIntCorrIrregularA->GetValue(r, phi, -z, dR, dRPhi, dZ);
+    //                                  fNPhiSlices / 8 + 1, fNZColumns / 8 + 1, 0);
+    fLookupIntCorrIrregularC->GetValue(r, phi, -z, dR, dRPhi, dZ);
     dZ = -1 * dZ;
   }
 
