@@ -46,7 +46,7 @@ public:
     TMatrixD **matricesCorrDrDzA, TMatrixD **matricesCorrDPhiRDzA, TMatrixD **matricesCorrDzA,
     TMatrixD **matricesDistDrDzC, TMatrixD **matricesDistDPhiRDzC, TMatrixD **matricesDistDzC,
     TMatrixD **matricesCorrDrDzC, TMatrixD **matricesCorrDPhiRDzC, TMatrixD **matricesCorrDzC,
-    TFormula *intErDzTestFunction, TFormula *intEPhiRDzTestFunction, TFormula *intDzTestFunction);
+    TFormula *intErDzTestFunction, TFormula *intEPhiRDzTestFunction, TFormula *intDzTestFunction, TFormula *ezFunction);
 
   void
   InitSpaceCharge3DPoisson(Int_t nRRow, Int_t nZColumn, Int_t phiSlice, Int_t maxIteration, Double_t stopConvergence);
@@ -218,6 +218,15 @@ public:
   void GetElectricFieldCyl(const Float_t x[], Short_t roc, Double_t dx[]);
   void Init();
 
+  AliTPCSpaceCharge3DCalc::Profile GetProfile() {
+	  return fSpaceCharge3DCalc.GetProfile();
+  }
+
+  void SetIntegrationStrategy(Int_t  strategy) {
+	  fSpaceCharge3DCalc.SetIntegrationStrategy(strategy);
+
+  }
+  
 private:
 AliTPCSpaceCharge3DCalc fSpaceCharge3DCalc; // Lookup table calculator
 

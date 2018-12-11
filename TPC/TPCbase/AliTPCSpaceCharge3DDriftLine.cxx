@@ -138,7 +138,7 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
   TMatrixD **matricesCorrDrDzA,  TMatrixD **matricesCorrDPhiRDzA, TMatrixD **matricesCorrDzA,
   TMatrixD **matricesDistDrDzC,  TMatrixD **matricesDistDPhiRDzC, TMatrixD **matricesDistDzC,
   TMatrixD **matricesCorrDrDzC,  TMatrixD **matricesCorrDPhiRDzC, TMatrixD **matricesCorrDzC,
-  TFormula *intErDzTestFunction,  TFormula *intEPhiRDzTestFunction, TFormula *intDzTestFunction) {
+  TFormula *intErDzTestFunction,  TFormula *intEPhiRDzTestFunction, TFormula *intDzTestFunction, TFormula *ezFunction) {
   fSpaceCharge3DCalc.InitSpaceCharge3DPoissonIntegralDz(nRRow, nZColumn, phiSlice, maxIteration, stopConvergence,
     matricesErA, matricesEPhiA, matricesEzA,
     matricesErC, matricesEPhiC, matricesEzC,
@@ -146,7 +146,7 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
     matricesCorrDrDzA,  matricesCorrDPhiRDzA, matricesCorrDzA,
     matricesDistDrDzC,  matricesDistDPhiRDzC, matricesDistDzC,
     matricesCorrDrDzC,  matricesCorrDPhiRDzC, matricesCorrDzC,
-    intErDzTestFunction, intEPhiRDzTestFunction, intDzTestFunction);
+    intErDzTestFunction, intEPhiRDzTestFunction, intDzTestFunction, ezFunction);
 }
 /// Creating look-up tables of Correction/Distortion by linear integration
 /// on z line
