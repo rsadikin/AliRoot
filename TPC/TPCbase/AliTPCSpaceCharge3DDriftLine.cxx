@@ -223,6 +223,13 @@ void AliTPCSpaceCharge3DDriftLine::GetCorrection(const Float_t x[], Short_t roc,
   fSpaceCharge3DCalc.GetCorrection(x, roc, dx);
 }
 ///
+/// \param x
+/// \param roc
+/// \param dx
+void AliTPCSpaceCharge3DDriftLine::GetCorrection(const Float_t x[], Short_t roc, Float_t dx[],const Int_t side) {
+  fSpaceCharge3DCalc.GetCorrection(x, roc, dx,side);
+}
+///
 /// \param z
 /// \param nx
 /// \param ny
@@ -506,9 +513,14 @@ TTree *AliTPCSpaceCharge3DDriftLine::CreateDistortionTree(Double_t step) {
         xyz[1] = phi;
         xyz[2] = z;
 
+	
         GetLocalDistortionCyl(xyz, roc, localDist);
 
-        GetCorrection(xyzDist, roc, corr);
+	if (z >= 0)	
+        	GetCorrection(xyzDist, roc, corr,0);
+	else
+        	GetCorrection(xyzDist, roc, corr,1);
+
 
         for (Int_t i = 0; i < 3; ++i) {
           xyzCorr[i] = xyzDist[i] + corr[i];
