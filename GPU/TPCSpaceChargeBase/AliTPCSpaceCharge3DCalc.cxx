@@ -479,9 +479,9 @@ void AliTPCSpaceCharge3DCalc::InitSpaceCharge3DPoissonIntegralDz(
   Double_t rList[nRRow], zList[nZColumn], phiList[phiSlice];
 
   // pointer to current TF1 for potential boundary values
-  TF1* f1BoundaryIFC = nullptr;
-  TF1* f1BoundaryOFC = nullptr;
-  TF1* f1BoundaryROC = nullptr;
+  TF2* f1BoundaryIFC = nullptr;
+  TF2* f1BoundaryOFC = nullptr;
+  TF2* f1BoundaryROC = nullptr;
   TStopwatch w;
 
   for (Int_t k = 0; k < phiSlice; k++) {
@@ -630,22 +630,22 @@ void AliTPCSpaceCharge3DCalc::InitSpaceCharge3DPoissonIntegralDz(
               // boundary IFC
               if (i == 0) {
                 if (f1BoundaryIFC != nullptr) {
-                  (*matrixV)(i, j) = f1BoundaryIFC->Eval(z0);
+                  (*matrixV)(i, j) = f1BoundaryIFC->Eval(z0, phi0);
                 }
               }
               if (i == (nRRow - 1)) {
                 if (f1BoundaryOFC != nullptr) {
-                  (*matrixV)(i, j) = f1BoundaryOFC->Eval(z0);
+                  (*matrixV)(i, j) = f1BoundaryOFC->Eval(z0, phi0);
                 }
               }
               if (j == 0) {
                 if (fFormulaBoundaryCE) {
-                  (*matrixV)(i, j) = fFormulaBoundaryCE->Eval(radius0);
+                  (*matrixV)(i, j) = fFormulaBoundaryCE->Eval(radius0, phi0);
                 }
               }
               if (j == (nZColumn - 1)) {
                 if (f1BoundaryROC != nullptr) {
-                  (*matrixV)(i, j) = f1BoundaryROC->Eval(radius0);
+                  (*matrixV)(i, j) = f1BoundaryROC->Eval(radius0, phi0);
                 }
               }
             } else {
@@ -908,9 +908,9 @@ void AliTPCSpaceCharge3DCalc::InitSpaceCharge3DPoissonIntegralDz(
   Double_t rList[nRRow], zList[nZColumn], phiList[phiSlice];
 
   // pointer to current TF1 for potential boundary values
-  TF1* f1BoundaryIFC = nullptr;
-  TF1* f1BoundaryOFC = nullptr;
-  TF1* f1BoundaryROC = nullptr;
+  TF2* f1BoundaryIFC = nullptr;
+  TF2* f1BoundaryOFC = nullptr;
+  TF2* f1BoundaryROC = nullptr;
   TStopwatch w;
 
   for (Int_t k = 0; k < phiSlice; k++) {
@@ -1285,9 +1285,9 @@ void AliTPCSpaceCharge3DCalc::InitSpaceCharge3DPoissonIntegralDz(
   Double_t rList[nRRow], zList[nZColumn], phiList[phiSlice];
 
   // pointer to current TF1 for potential boundary values
-  TF1* f1BoundaryIFC = nullptr;
-  TF1* f1BoundaryOFC = nullptr;
-  TF1* f1BoundaryROC = nullptr;
+  TF2* f1BoundaryIFC = nullptr;
+  TF2* f1BoundaryOFC = nullptr;
+  TF2* f1BoundaryROC = nullptr;
   TStopwatch w;
 
   for (Int_t k = 0; k < phiSlice; k++) {

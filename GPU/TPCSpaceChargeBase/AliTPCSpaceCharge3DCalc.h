@@ -18,7 +18,7 @@
 #ifndef ALI_TPC_SPACECHARGE3D_CALC_H
 #define ALI_TPC_SPACECHARGE3D_CALC_H
 
-#include "TF1.h"
+#include "TF2.h"
 #include "TH3F.h"
 #include "TMatrixD.h"
 #include "AliTPCPoissonSolver.h"
@@ -201,19 +201,19 @@ class AliTPCSpaceCharge3DCalc
   TFormula* GetPotentialVFormula() const { return fFormulaPotentialV; }
   TFormula* GetChargeRhoFormula() const { return fFormulaChargeRho; }
 
-  void SetBoundaryIFCA(TF1* f1) { fFormulaBoundaryIFCA = new TF1(*f1); }
+  void SetBoundaryIFCA(TF2* f1) { fFormulaBoundaryIFCA = new TF2(*f1); }
 
-  void SetBoundaryIFCC(TF1* f1) { fFormulaBoundaryIFCC = new TF1(*f1); }
+  void SetBoundaryIFCC(TF2* f1) { fFormulaBoundaryIFCC = new TF2(*f1); }
 
-  void SetBoundaryOFCA(TF1* f1) { fFormulaBoundaryOFCA = new TF1(*f1); }
+  void SetBoundaryOFCA(TF2* f1) { fFormulaBoundaryOFCA = new TF2(*f1); }
 
-  void SetBoundaryOFCC(TF1* f1) { fFormulaBoundaryOFCC = new TF1(*f1); }
+  void SetBoundaryOFCC(TF2* f1) { fFormulaBoundaryOFCC = new TF2(*f1); }
 
-  void SetBoundaryROCA(TF1* f1) { fFormulaBoundaryROCA = new TF1(*f1); }
+  void SetBoundaryROCA(TF2* f1) { fFormulaBoundaryROCA = new TF2(*f1); }
 
-  void SetBoundaryROCC(TF1* f1) { fFormulaBoundaryROCC = new TF1(*f1); }
+  void SetBoundaryROCC(TF2* f1) { fFormulaBoundaryROCC = new TF2(*f1); }
 
-  void SetBoundaryCE(TF1* f1) { fFormulaBoundaryCE = new TF1(*f1); }
+  void SetBoundaryCE(TF2* f1) { fFormulaBoundaryCE = new TF2(*f1); }
 
   void SetElectricFieldFormula(TFormula* formulaEr, TFormula* formulaEPhi, TFormula* formulaEz)
   {
@@ -259,7 +259,7 @@ class AliTPCSpaceCharge3DCalc
   Double_t* fListPotentialBoundaryA; //[fNRRows + fNNColumns] * 2 * fNPhiSlices
   Double_t* fListPotentialBoundaryC; //[fNRRows + fNNColumns] * 2 * fNPhiSlices
 
-  Int_t fCorrectionType = 1;      ///> use regular or irregular grid method
+  Int_t fCorrectionType = 0;      ///> use regular or irregular grid method
   Int_t fInterpolationOrder = 5;  ///>  Order of interpolation (1-> tri linear, 2->Lagrange interpolation order 2, 3> cubic spline)
   Int_t fIrregularGridSize = 3;   ///>  Size of irregular grid cubes for interpolation (min 3)
   Int_t fRBFKernelType = 0;       ///>  RBF kernel type
@@ -341,13 +341,13 @@ class AliTPCSpaceCharge3DCalc
   TH3* fHistogram3DSpaceCharge;  //-> Histogram with the input space charge histogram - used as an optional input
   TH3* fHistogram3DSpaceChargeA; //-> Histogram with the input space charge histogram - used as an optional input side A
   TH3* fHistogram3DSpaceChargeC; //-> Histogram with the input space charge histogram - used as an optional input side C
-  TF1* fFormulaBoundaryIFCA;     //-> function define boundary values for IFC side A V(z) assuming symmetry in phi and r.
-  TF1* fFormulaBoundaryIFCC;     //-> function define boundary values for IFC side C V(z) assuming symmetry in phi and r.
-  TF1* fFormulaBoundaryOFCA;     //-> function define boundary values for OFC side A V(z) assuming symmetry in phi and r.
-  TF1* fFormulaBoundaryOFCC;     ///<- function define boundary values for IFC side C V(z) assuming symmetry in phi and r.
-  TF1* fFormulaBoundaryROCA;     ///<- function define boundary values for ROC side A V(r) assuming symmetry in phi and z.
-  TF1* fFormulaBoundaryROCC;     ///<- function define boundary values for ROC side V V(t) assuming symmetry in phi and z.
-  TF1* fFormulaBoundaryCE;       ///<- function define boundary values for CE V(z) assuming symmetry in phi and z.
+  TF2* fFormulaBoundaryIFCA;     //-> function define boundary values for IFC side A V(z,phi)
+  TF2* fFormulaBoundaryIFCC;     //-> function define boundary values for IFC side C V(z,phi)
+  TF2* fFormulaBoundaryOFCA;     //-> function define boundary values for OFC side A V(z,phi)
+  TF2* fFormulaBoundaryOFCC;     ///<- function define boundary values for IFC side C V(z,phi)
+  TF2* fFormulaBoundaryROCA;     ///<- function define boundary values for ROC side A V(r,phi)
+  TF2* fFormulaBoundaryROCC;     ///<- function define boundary values for ROC side V V(r,phi)
+  TF2* fFormulaBoundaryCE;       ///<- function define boundary values for CE V(z,phi)
 
   TFormula* fFormulaPotentialV; ///<- potential V(r,rho,z) function
   TFormula* fFormulaChargeRho;  ///<- charge density Rho(r,rho,z) function

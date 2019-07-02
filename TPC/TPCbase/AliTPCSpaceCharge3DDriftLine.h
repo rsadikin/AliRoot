@@ -18,7 +18,7 @@
 /// \author Rifki Sadikin <rifki.sadikin@cern.ch>, Indonesian Institute of Sciences
 /// \date Nov 20, 2017
 
-#include "TF1.h"
+#include "TF2.h"
 #include "TH2F.h"
 #include "TH3F.h"
 #include "TMatrixD.h"
@@ -181,31 +181,31 @@ public:
 
   void SetPotentialBoundaryAndChargeFormula(TFormula *vTestFunction, TFormula *rhoTestFunction);
 
-  void SetBoundaryIFCA(TF1 *f1) {
+  void SetBoundaryIFCA(TF2 *f1) {
     fSpaceCharge3DCalc.SetBoundaryIFCA(f1);
   }
 
-  void SetBoundaryIFCC(TF1 *f1) {
+  void SetBoundaryIFCC(TF2 *f1) {
     fSpaceCharge3DCalc.SetBoundaryIFCC(f1);
   }
 
-  void SetBoundaryOFCA(TF1 *f1) {
+  void SetBoundaryOFCA(TF2 *f1) {
     fSpaceCharge3DCalc.SetBoundaryOFCA(f1);
   }
 
-  void SetBoundaryOFCC(TF1 *f1) {
+  void SetBoundaryOFCC(TF2 *f1) {
     fSpaceCharge3DCalc.SetBoundaryOFCC(f1);
   }
 
-  void SetBoundaryROCA(TF1 *f1) {
+  void SetBoundaryROCA(TF2 *f1) {
     fSpaceCharge3DCalc.SetBoundaryROCA(f1);
   }
 
-  void SetBoundaryROCC(TF1 *f1) {
+  void SetBoundaryROCC(TF2 *f1) {
     fSpaceCharge3DCalc.SetBoundaryROCC(f1);
   }
 
-  void SetBoundaryCE(TF1 *f1) {
+  void SetBoundaryCE(TF2 *f1) {
     fSpaceCharge3DCalc.SetBoundaryCE(f1);
   }
 
