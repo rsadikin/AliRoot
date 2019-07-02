@@ -24,12 +24,15 @@
 ClassImp(AliTPCPoissonSolver)
   /// \endcond
 
-  const Double_t AliTPCPoissonSolver::fgkTPCZ0 = 249.7;                        ///< nominal gating grid position
+  // const Double_t AliTPCPoissonSolver::fgkTPCZ0 = 249.7;                        ///< nominal gating grid position
+  const Double_t AliTPCPoissonSolver::fgkTPCZ0 = 249.525;                        ///< nominal G1T position
 const Double_t AliTPCPoissonSolver::fgkIFCRadius = 83.5;                       ///< radius which renders the "18 rod manifold" best -> compare calc. of Jim Thomas
 const Double_t AliTPCPoissonSolver::fgkOFCRadius = 254.5;                      ///< Mean Radius of the Outer Field Cage (252.55 min, 256.45 max) (cm)
 const Double_t AliTPCPoissonSolver::fgkZOffSet = 0.2;                          ///< Offset from CE: calculate all distortions closer to CE as if at this point
-const Double_t AliTPCPoissonSolver::fgkCathodeV = -100000.0;                   ///< Cathode Voltage (volts)
-const Double_t AliTPCPoissonSolver::fgkGG = -70.0;                             ///< Gating Grid voltage (volts)
+// const Double_t AliTPCPoissonSolver::fgkCathodeV = -100000.0;                   ///< Cathode Voltage (volts)
+// const Double_t AliTPCPoissonSolver::fgkGG = -70.0;                             ///< Gating Grid voltage (volts)
+const Double_t AliTPCPoissonSolver::fgkCathodeV = -103410.0;                   ///< Cathode Voltage (volts) with GEM ROCs
+const Double_t AliTPCPoissonSolver::fgkGG = -3600.0;                             ///< G1T voltage (volts)
 const Double_t AliTPCPoissonSolver::fgkdvdE = 0.0024;                          ///< [cm/V] drift velocity dependency on the E field (from Magboltz for NeCO2N2 at standard environment)
 const Double_t AliTPCPoissonSolver::fgkEM = -1.602176487e-19 / 9.10938215e-31; ///< charge/mass in [C/kg]
 const Double_t AliTPCPoissonSolver::fgke0 = 8.854187817e-12;                   ///< vacuum permittivity [A·s/(V·m)]
