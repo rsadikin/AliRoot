@@ -23,6 +23,7 @@ if [[ ! $ALIROOT_SOURCE ]]; then
 fi
 
 export ROOT_HIST=0
+EXPECTED_N_GOOD=13
 
 testAliTPCSpaceCharge3DDriftLine() {
   cp $ALIROOT_SOURCE/TPC/TPCbase/test/AliTPCSpaceCharge3DDriftLineTest.C .
@@ -33,7 +34,7 @@ EOF
   N_GOOD=$(grep -cE 'AliTPCSpaceCharge3DDriftLineTest.*Test.*OK.*' testAliTPCSpaceCharge3DDriftLineTest.log)
   N_BAD=$(grep -cE 'AliTPCSpaceCharge3DDriftLineTest.*Test.*FAILED.*' testAliTPCSpaceCharge3DDriftLineTest.log)
   TEST_STATUS=0
-  if [[ $N_GOOD < 13 ]]; then
+  if [[ $N_GOOD < $EXPECTED_N_GOOD ]]; then
     # alilog_error "spacechargeTest.testAliTPCSpaceCharge3DDriftLine: Invariant test failed"
     ((TEST_STATUS++))
   fi

@@ -1,14 +1,9 @@
-// Copyright CERN and copyright holders of ALICE O2. This software is
-// distributed under the terms of the GNU General Public License v3 (GPL
-// Version 3), copied verbatim in the file "COPYING".
-//
-// See http://alice-o2.web.cern.ch/license for full licensing information.
-//
-// In applying this license CERN does not waive the privileges and immunities
-// granted to it by virtue of its status as an Intergovernmental Organization
-// or submit itself to any jurisdiction.
+/* Copyright(c) 1998-1999, ALICE Experiment at CERN, All rights reserved. *
+ * See cxx source for full Copyright notice                               */
 
-/// \file AliTPCSpaceCharge3DCalc.h
+/* $Id$ */
+
+/// \class AliTPCSpaceCharge3DCalc
 /// \brief This class provides distortion and correction map calculation with integration following electron drift
 /// TODO: validate distortion z by comparing with exisiting classes
 ///
@@ -29,9 +24,8 @@
 
 class TFormula;
 
-class AliTPCSpaceCharge3DCalc
-{
- public:
+class AliTPCSpaceCharge3DCalc {
+public:
   AliTPCSpaceCharge3DCalc();
   AliTPCSpaceCharge3DCalc(Int_t nRRow, Int_t nZColumn, Int_t nPhiSlice);
   AliTPCSpaceCharge3DCalc(Int_t nRRow, Int_t nZColumn, Int_t nPhiSlice,
@@ -39,30 +33,18 @@ class AliTPCSpaceCharge3DCalc
   virtual ~AliTPCSpaceCharge3DCalc();
   void InitSpaceCharge3DPoissonIntegralDz(Int_t nRRow, Int_t nZColumn, Int_t phiSlice, Int_t maxIteration,
                                           Double_t stopConvergence);
-
-  // outdated, to be removed after modifications in aliroot are pushed
   void InitSpaceCharge3DPoissonIntegralDz(
     Int_t nRRow, Int_t nZColumn, Int_t phiSlice, Int_t maxIteration, Double_t stopConvergence,
-    TMatrixD** matricesErA, TMatrixD** matricesEphiA, TMatrixD** matricesEzA,
-    TMatrixD** matricesErC, TMatrixD** matricesEphiC, TMatrixD** matricesEzC,
-    TMatrixD** matricesDistDrDzA, TMatrixD** matricesDistDPhiRDzA, TMatrixD** matricesDistDzA,
-    TMatrixD** matricesCorrDrDzA, TMatrixD** matricesCorrDPhiRDzA, TMatrixD** matricesCorrDzA,
-    TMatrixD** matricesDistDrDzC, TMatrixD** matricesDistDPhiRDzC, TMatrixD** matricesDistDzC,
-    TMatrixD** matricesCorrDrDzC, TMatrixD** matricesCorrDPhiRDzC, TMatrixD** matricesCorrDzC,
-    TFormula* intErDzTestFunction, TFormula* intEPhiRDzTestFunction, TFormula* intDzTestFunction);
-
-  void InitSpaceCharge3DPoissonIntegralDz(
-    Int_t nRRow, Int_t nZColumn, Int_t phiSlice, Int_t maxIteration, Double_t stopConvergence,
-    TMatrixD** matricesErA, TMatrixD** matricesEphiA, TMatrixD** matricesEzA,
-    TMatrixD** matricesErC, TMatrixD** matricesEphiC, TMatrixD** matricesEzC,
-    TMatrixD** matricesDistDrDzA, TMatrixD** matricesDistDPhiRDzA, TMatrixD** matricesDistDzA,
-    TMatrixD** matricesCorrDrDzA, TMatrixD** matricesCorrDPhiRDzA, TMatrixD** matricesCorrDzA,
-    TMatrixD** matricesDistDrDzC, TMatrixD** matricesDistDPhiRDzC, TMatrixD** matricesDistDzC,
-    TMatrixD** matricesCorrDrDzC, TMatrixD** matricesCorrDPhiRDzC, TMatrixD** matricesCorrDzC,
-    TFormula* intErDzTestFunction, TFormula* intEPhiRDzTestFunction, TFormula* intDzTestFunction, TFormula* ezF);
+    TMatrixD **matricesErA, TMatrixD **matricesEphiA, TMatrixD **matricesEzA,
+    TMatrixD **matricesErC, TMatrixD **matricesEphiC, TMatrixD **matricesEzC,
+    TMatrixD **matricesDistDrDzA, TMatrixD **matricesDistDPhiRDzA, TMatrixD **matricesDistDzA,
+    TMatrixD **matricesCorrDrDzA, TMatrixD **matricesCorrDPhiRDzA, TMatrixD **matricesCorrDzA,
+    TMatrixD **matricesDistDrDzC, TMatrixD **matricesDistDPhiRDzC, TMatrixD **matricesDistDzC,
+    TMatrixD **matricesCorrDrDzC, TMatrixD **matricesCorrDPhiRDzC, TMatrixD **matricesCorrDzC,
+    TFormula *intErDzTestFunction, TFormula *intEPhiRDzTestFunction, TFormula *intDzTestFunction, TFormula *ezF);
 
   void
-    InitSpaceCharge3DPoisson(Int_t nRRow, Int_t nZColumn, Int_t phiSlice, Int_t maxIteration, Double_t stopConvergence);
+  InitSpaceCharge3DPoisson(Int_t nRRow, Int_t nZColumn, Int_t phiSlice, Int_t maxIteration, Double_t stopConvergence);
   void ForceInitSpaceCharge3DPoissonIntegralDz(Int_t nRRow, Int_t nZColumn, Int_t phiSlice, Int_t maxIteration,
                                                Double_t stopConvergence);
   void GetDistortionCyl(const Float_t x[], Short_t roc, Float_t dx[]);
@@ -70,45 +52,45 @@ class AliTPCSpaceCharge3DCalc
   void GetCorrectionCyl(const Float_t x[], Short_t roc, Float_t dx[]);
   void GetCorrectionCylAC(const Float_t x[], Short_t roc, Float_t dx[]);
   void GetCorrectionCylACIrregular(const Float_t x[], Short_t roc, Float_t dx[]);
-  void GetCorrectionCylACIrregular(const Float_t x[], Short_t roc, Float_t dx[], const Int_t side);
+  void GetCorrectionCylACIrregular(const Float_t x[], Short_t roc, Float_t dx[],const Int_t side);
   void GetDistortion(const Float_t x[], Short_t roc, Float_t dx[]);
 
   void GetCorrection(const Float_t x[], Short_t roc, Float_t dx[]);
-  void GetCorrection(const Float_t x[], Short_t roc, Float_t dx[], const Int_t side);
+  void GetCorrection(const Float_t x[], Short_t roc, Float_t dx[],const Int_t side);
 
   Double_t GetChargeCylAC(const Float_t x[], Short_t roc);
   Double_t GetPotentialCylAC(const Float_t x[], Short_t roc);
 
   Double_t GetInverseChargeCylAC(const Float_t x[], Short_t roc);
 
-  void SetCorrectionType(Int_t correctionType) { fCorrectionType = correctionType; }
+  void SetCorrectionType(Int_t correctionType) {
+    fCorrectionType = correctionType;
+  }
 
   enum {
     kNumSector = 18
   };
 
   enum CorrectionType {
-    kRegularInterpolator = 0,   ///< use interpolation with regular interpolator for correction look up table
-    kIrregularInterpolator = 1, ///< use irregular interpolator for correction look up table
+    kRegularInterpolator = 0,     ///< use interpolation with regular interpolator for correction look up table
+    kIrregularInterpolator = 1,   ///< use irregular interpolator for correction look up table
   };
 
   enum IntegrationStrategy {
-    kNaive = 0, ///< use interpolation with regular interpolator for correction look up table
+    kNaive = 0,     ///< use interpolation with regular interpolator for correction look up table
     kOpt = 1,   ///< use irregular interpolator for correction look up table
   };
-  void SetInputSpaceCharge(TH3* hisSpaceCharge3D, Double_t norm);
-  void SetInputSpaceCharge(TH3* hisSpaceCharge3D) { SetInputSpaceCharge(hisSpaceCharge3D, 1); }
-  void SetInputSpaceCharge(TH3* hisSpaceCharge3D, Double_t norm, Int_t side);
-  void SetInputSpaceCharge(TH3* hisSpaceCharge3D, Int_t side) { SetInputSpaceCharge(hisSpaceCharge3D, 1, side); }
+  void SetInputSpaceCharge(TH3 *hisSpaceCharge3D, Double_t norm);
+  void SetInputSpaceCharge(TH3 *hisSpaceCharge3D) { SetInputSpaceCharge(hisSpaceCharge3D, 1); }
+  void SetInputSpaceCharge(TH3 *hisSpaceCharge3D, Double_t norm, Int_t side);
+  void SetInputSpaceCharge(TH3 *hisSpaceCharge3D, Int_t side) { SetInputSpaceCharge(hisSpaceCharge3D, 1, side); }
 
-  void SetInputSpaceChargeA(TMatrixD** matricesLookUpCharge)
-  {
+  void SetInputSpaceChargeA(TMatrixD **matricesLookUpCharge) {
     fInterpolatorChargeA->SetValue(matricesLookUpCharge);
     fInterpolatorChargeA->InitCubicSpline();
   }
 
-  void SetInputSpaceChargeC(TMatrixD** matricesLookUpCharge)
-  {
+  void SetInputSpaceChargeC(TMatrixD **matricesLookUpCharge) {
     fInterpolatorChargeC->SetValue(matricesLookUpCharge);
     fInterpolatorChargeC->InitCubicSpline();
   }
@@ -125,30 +107,26 @@ class AliTPCSpaceCharge3DCalc
 
   Int_t GetNZColumns() { return fNZColumns; }
 
-  void SetPoissonSolver(AliTPCPoissonSolver* poissonSolver)
-  {
-    if (fPoissonSolver != nullptr) {
-      delete fPoissonSolver;
-    }
-    fPoissonSolver = poissonSolver;
+  void SetPoissonSolver(AliTPCPoissonSolver *poissonSolver) {
+    if (fPoissonSolver != NULL) delete fPoissonSolver;
+    fPoissonSolver= poissonSolver;
   }
 
-  AliTPCPoissonSolver* GetPoissonSolver() { return fPoissonSolver; }
+  AliTPCPoissonSolver *GetPoissonSolver() { return fPoissonSolver; }
 
-  void SetInterpolationOrder(Int_t order);
+  void SetInterpolationOrder(Int_t order); 
+ 
 
   Int_t GetInterpolationOrder() { return fInterpolationOrder; }
 
-  void SetOmegaTauT1T2(Float_t omegaTau, Float_t t1, Float_t t2)
-  {
+  void SetOmegaTauT1T2(Float_t omegaTau, Float_t t1, Float_t t2) {
     const Double_t wt0 = t2 * omegaTau;
     fC0 = 1. / (1. + wt0 * wt0);
     const Double_t wt1 = t1 * omegaTau;
     fC1 = wt1 / (1. + wt1 * wt1);
   };
 
-  void SetC0C1(Float_t c0, Float_t c1)
-  {
+  void SetC0C1(Float_t c0, Float_t c1) {
     fC0 = c0;
     fC1 = c1;
   }
@@ -161,30 +139,30 @@ class AliTPCSpaceCharge3DCalc
 
   Float_t GetCorrectionFactor() const { return fCorrectionFactor; }
 
-  void InverseDistortionMaps(TMatrixD** matricesCharge, TMatrixD** matricesEr, TMatrixD** matricesEPhi,
-                             TMatrixD** matricesEz, TMatrixD** matricesInvLocalIntErDz,
-                             TMatrixD**, TMatrixD** matricesInvLocalEz,
-                             TMatrixD** matricesDistDrDz, TMatrixD** matricesDistDPhiRDz, TMatrixD** matricesDistDz,
+  void InverseDistortionMaps(TMatrixD **matricesCharge, TMatrixD **matricesEr, TMatrixD **matricesEPhi,
+                             TMatrixD **matricesEz, TMatrixD **matricesInvLocalIntErDz,
+                             TMatrixD **, TMatrixD **matricesInvLocalEz,
+                             TMatrixD **matricesDistDrDz, TMatrixD **matricesDistDPhiRDz, TMatrixD **matricesDistDz,
                              const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice, const Int_t nStep,
                              const Bool_t useCylAC, Int_t stepR, Int_t stepZ, Int_t stepPhi, Int_t interpType);
 
-  void InverseDistortionMapsNoDrift(TMatrixD** matricesCharge, TMatrixD** matricesEr, TMatrixD** matricesEPhi,
-                                    TMatrixD** matricesEz, TMatrixD** matricesInvLocalIntErDz,
-                                    TMatrixD** matricesInvLocalIntEPhiDz, TMatrixD** matricesInvLocalEz,
-                                    TMatrixD** matricesDistDrDz, TMatrixD** matricesDistDPhiRDz,
-                                    TMatrixD** matricesDistDz, const Int_t nRRow, const Int_t nZColumn,
+  void InverseDistortionMapsNoDrift(TMatrixD **matricesCharge, TMatrixD **matricesEr, TMatrixD **matricesEPhi,
+                                    TMatrixD **matricesEz, TMatrixD **matricesInvLocalIntErDz,
+                                    TMatrixD **matricesInvLocalIntEPhiDz, TMatrixD **matricesInvLocalEz,
+                                    TMatrixD **matricesDistDrDz, TMatrixD **matricesDistDPhiRDz,
+                                    TMatrixD **matricesDistDz, const Int_t nRRow, const Int_t nZColumn,
                                     const Int_t phiSlice);
 
   void GetCorrectionCylNoDrift(const Float_t x[], const Short_t roc, Float_t dx[]);
 
   void GetDistortionCylNoDrift(const Float_t x[], Short_t roc, Float_t dx[]);
 
-  void InverseGlobalToLocalDistortionNoDrift(TMatrixD** matricesDistDrDz, TMatrixD** matricesDistDPhiRDz,
-                                             TMatrixD** matricesDistDz, Double_t* rList, Double_t* zList,
-                                             Double_t* phiList, const Int_t nRRow, const Int_t nZColumn,
+  void InverseGlobalToLocalDistortionNoDrift(TMatrixD **matricesDistDrDz, TMatrixD **matricesDistDPhiRDz,
+                                             TMatrixD **matricesDistDz, Double_t *rList, Double_t *zList,
+                                             Double_t *phiList, const Int_t nRRow, const Int_t nZColumn,
                                              const Int_t phiSlice);
 
-  void GetChargeDensity(TMatrixD** matricesChargeA, TMatrixD** matricesChargeC, TH3* spaceChargeHistogram3D,
+  void GetChargeDensity(TMatrixD **matricesChargeA, TMatrixD **matricesChargeC, TH3 *spaceChargeHistogram3D,
                         const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice);
 
   void GetInverseLocalDistortionCyl(const Float_t x[], Short_t roc, Float_t dx[]);
@@ -197,9 +175,9 @@ class AliTPCSpaceCharge3DCalc
 
   Int_t GetRBFKernelType() { return fRBFKernelType; }
 
-  void SetPotentialBoundaryAndChargeFormula(TFormula* vTestFunction, TFormula* rhoTestFunction);
-  TFormula* GetPotentialVFormula() const { return fFormulaPotentialV; }
-  TFormula* GetChargeRhoFormula() const { return fFormulaChargeRho; }
+  void SetPotentialBoundaryAndChargeFormula(TFormula *vTestFunction, TFormula *rhoTestFunction);
+  TFormula *GetPotentialVFormula() const { return fFormulaPotentialV; }
+  TFormula *GetChargeRhoFormula() const { return fFormulaChargeRho; }
 
   void SetBoundaryIFCA(TF2* f1) { fFormulaBoundaryIFCA = new TF2(*f1); }
 
@@ -215,32 +193,32 @@ class AliTPCSpaceCharge3DCalc
 
   void SetBoundaryCE(TF2* f1) { fFormulaBoundaryCE = new TF2(*f1); }
 
-  void SetElectricFieldFormula(TFormula* formulaEr, TFormula* formulaEPhi, TFormula* formulaEz)
-  {
+  void SetElectricFieldFormula(TFormula *formulaEr, TFormula *formulaEPhi, TFormula *formulaEz) {
     fFormulaEr = formulaEr;
     fFormulaEPhi = formulaEPhi;
     fFormulaEz = formulaEz;
   }
-  TFormula* GetErFormula() const { return fFormulaEr; }
-  TFormula* GetEPhiFormula() const { return fFormulaEPhi; }
-  TFormula* GetEzFormula() const { return fFormulaEz; }
+  TFormula *GetErFormula() const { return fFormulaEr; }
+  TFormula *GetEPhiFormula() const { return fFormulaEPhi; }
+  TFormula *GetEzFormula() const { return fFormulaEz; }
 
   Float_t GetSpaceChargeDensity(Float_t r, Float_t phi, Float_t z);
   Float_t GetPotential(Float_t r, Float_t phi, Float_t z);
   void GetElectricFieldCyl(const Float_t x[], Short_t roc, Double_t dx[]);
   struct Profile {
-    Double_t poissonSolverTime;
-    Double_t electricFieldTime;
-    Double_t localDistortionTime;
-    Double_t globalDistortionTime;
-    Double_t interpolationInitTime;
-    Int_t iteration;
+	Double_t poissonSolverTime;
+	Double_t electricFieldTime;
+	Double_t localDistortionTime;
+	Double_t globalDistortionTime;
+	Double_t interpolationInitTime;
+	Int_t iteration;
   };
 
   Profile GetProfile() { return myProfile; }
-  void SetIntegrationStrategy(Int_t integrationStrategy) { fIntegrationStrategy = integrationStrategy; }
-
- private:
+  void SetIntegrationStrategy(Int_t integrationStrategy) {
+    fIntegrationStrategy = integrationStrategy;
+  }
+private:
   static const Int_t kNMaxPhi = 360;
   Profile myProfile;
   Int_t fNRRows = 129;             ///< the maximum on row-slices so far ~ 2cm slicing
@@ -353,96 +331,86 @@ class AliTPCSpaceCharge3DCalc
   TFormula* fFormulaChargeRho;  ///<- charge density Rho(r,rho,z) function
 
   // analytic formula for E
-  TFormula* fFormulaEPhi; ///<- ePhi EPhi(r,rho,z) electric field (phi) function
-  TFormula* fFormulaEr;   ///<- er Er(r,rho,z) electric field (r) function
-  TFormula* fFormulaEz;   ///<- ez Ez(r,rho,z) electric field (z) function
+  TFormula *fFormulaEPhi; ///<- ePhi EPhi(r,rho,z) electric field (phi) function
+  TFormula *fFormulaEr; ///<- er Er(r,rho,z) electric field (r) function
+  TFormula *fFormulaEz; ///<- ez Ez(r,rho,z) electric field (z) function
 
-  AliTPCPoissonSolver* fPoissonSolver; //-> Pointer to a poisson solver
 
-  void ElectricField(TMatrixD** matricesV, TMatrixD** matricesEr, TMatrixD** matricesEPhi, TMatrixD** matricesEz,
+
+  AliTPCPoissonSolver *fPoissonSolver; //-> Pointer to a poisson solver
+
+  void ElectricField(TMatrixD **matricesV, TMatrixD **matricesEr, TMatrixD **matricesEPhi, TMatrixD **matricesEz,
                      const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlices, const Float_t gridSizeR,
                      const Float_t gridSizePhi, const Float_t gridSizeZ, const Int_t symmetry,
                      const Float_t innerRadius);
 
   void
-    LocalDistCorrDz(TMatrixD** matricesEr, TMatrixD** matricesEPhi, TMatrixD** matricesEz, TMatrixD** matricesDistDrDz,
-                    TMatrixD** matricesDistDPhiRDz, TMatrixD** matricesDistDz, TMatrixD** matricesCorrDrDz,
-                    TMatrixD** matricesCorrDPhiRDz, TMatrixD** matricesCorrDz, const Int_t nRRow, const Int_t nZColumn,
-                    const Int_t phiSlice, const Float_t gridSizeZ, const Double_t ezField);
+  LocalDistCorrDz(TMatrixD **matricesEr, TMatrixD **matricesEPhi, TMatrixD **matricesEz, TMatrixD **matricesDistDrDz,
+                  TMatrixD **matricesDistDPhiRDz, TMatrixD **matricesDistDz, TMatrixD **matricesCorrDrDz,
+                  TMatrixD **matricesCorrDPhiRDz, TMatrixD **matricesCorrDz, const Int_t nRRow, const Int_t nZColumn,
+                  const Int_t phiSlice, const Float_t gridSizeZ, const Double_t ezField);
 
-  void IntegrateDistCorrDriftLineDz(AliTPCLookUpTable3DInterpolatorD* lookupLocalDist, TMatrixD** matricesGDistDrDz,
-                                    TMatrixD** matricesGDistDPhiRDz, TMatrixD** matricesGDistDz,
-                                    AliTPCLookUpTable3DInterpolatorD* lookupLocalCorr, TMatrixD** matricesGCorrDrDz,
-                                    TMatrixD** matricesGCorrDPhiRDz, TMatrixD** matricesGCorrDz,
-                                    TMatrixD** matricesGCorrIrregularDrDz, TMatrixD** matricesGCorrIrregularDPhiRDz,
-                                    TMatrixD** matricesGCorrIrregularDz,
-                                    TMatrixD** matricesRIrregular, TMatrixD** matricesPhiIrregular,
-                                    TMatrixD** matricesZIrregular,
+  void IntegrateDistCorrDriftLineDz(AliTPCLookUpTable3DInterpolatorD *lookupLocalDist, TMatrixD **matricesGDistDrDz,
+                                    TMatrixD **matricesGDistDPhiRDz, TMatrixD **matricesGDistDz,
+                                    AliTPCLookUpTable3DInterpolatorD *lookupLocalCorr, TMatrixD **matricesGCorrDrDz,
+                                    TMatrixD **matricesGCorrDPhiRDz, TMatrixD **matricesGCorrDz,
+                                    TMatrixD **matricesGCorrIrregularDrDz, TMatrixD **matricesGCorrIrregularDPhiRDz,
+                                    TMatrixD **matricesGCorrIrregularDz,
+                                    TMatrixD **matricesRIrregular, TMatrixD **matricesPhiIrregular,
+                                    TMatrixD **matricesZIrregular,
                                     const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice,
-                                    const Double_t* rList, const Double_t* phiList, const Double_t* zList);
-
-  // outdated, to be removed once modifications in aliroot are pushed
-  void IntegrateDistCorrDriftLineDz(
-    TFormula* intErDzTestFunction, TFormula* intEPhiRDzTestFunction, TFormula* intDzTestFunction,
-    const Double_t ezField, TMatrixD** matricesGDistDrDz, TMatrixD** matricesGDistDPhiRDz,
-    TMatrixD** matricesGDistDz,
-    TMatrixD** matricesGCorrDrDz, TMatrixD** matricesGCorrDPhiRDz, TMatrixD** matricesGCorrDz,
-    TMatrixD** matricesGCorrIrregularDrDz, TMatrixD** matricesGCorrIrregularDPhiRDz,
-    TMatrixD** matricesGCorrIrregularDz, TMatrixD** matricesRIrregular, TMatrixD** matricesPhiIrregular,
-    TMatrixD** matricesZIrregular, const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice,
-    const Double_t* rList,
-    const Double_t* phiList, const Double_t* zList);
+                                    const Double_t *rList, const Double_t *phiList, const Double_t *zList);
 
   void IntegrateDistCorrDriftLineDz(
-    TFormula* intErDzTestFunction, TFormula* intEPhiRDzTestFunction, TFormula* intDzTestFunction, TFormula* ezF,
-    const Double_t ezField, TMatrixD** matricesGDistDrDz, TMatrixD** matricesGDistDPhiRDz,
-    TMatrixD** matricesGDistDz,
-    TMatrixD** matricesGCorrDrDz, TMatrixD** matricesGCorrDPhiRDz, TMatrixD** matricesGCorrDz,
-    TMatrixD** matricesGCorrIrregularDrDz, TMatrixD** matricesGCorrIrregularDPhiRDz,
-    TMatrixD** matricesGCorrIrregularDz, TMatrixD** matricesRIrregular, TMatrixD** matricesPhiIrregular,
-    TMatrixD** matricesZIrregular, const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice,
-    const Double_t* rList,
-    const Double_t* phiList, const Double_t* zList);
+    TFormula *intErDzTestFunction, TFormula *intEPhiRDzTestFunction, TFormula *intDzTestFunction, TFormula *ezF,
+    const Double_t ezField, TMatrixD **matricesGDistDrDz, TMatrixD **matricesGDistDPhiRDz,
+    TMatrixD **matricesGDistDz,
+    TMatrixD **matricesGCorrDrDz, TMatrixD **matricesGCorrDPhiRDz, TMatrixD **matricesGCorrDz,
+    TMatrixD **matricesGCorrIrregularDrDz, TMatrixD **matricesGCorrIrregularDPhiRDz,
+    TMatrixD **matricesGCorrIrregularDz, TMatrixD **matricesRIrregular, TMatrixD **matricesPhiIrregular,
+    TMatrixD **matricesZIrregular, const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice,
+    const Double_t *rList,
+    const Double_t *phiList, const Double_t *zList);
 
-  void IntegrateDistCorrDriftLineDzWithLookUp(AliTPCLookUpTable3DInterpolatorD* lookupLocalDist, TMatrixD** matricesGDistDrDz, TMatrixD** matricesGDistDPhiRDz, TMatrixD** matricesGDistDz, AliTPCLookUpTable3DInterpolatorD* lookupLocalCorr, TMatrixD** matricesGCorrDrDz, TMatrixD** matricesGCorrDPhiRDz, TMatrixD** matricesGCorrDz, const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice, Double_t* rList, Double_t* phiList, Double_t* zList);
+  void IntegrateDistCorrDriftLineDzWithLookUp ( AliTPCLookUpTable3DInterpolatorD *lookupLocalDist, TMatrixD** matricesGDistDrDz,  	TMatrixD** matricesGDistDPhiRDz, 	TMatrixD** matricesGDistDz, 	AliTPCLookUpTable3DInterpolatorD *lookupLocalCorr, 	TMatrixD** matricesGCorrDrDz,  	TMatrixD** matricesGCorrDPhiRDz, TMatrixD** matricesGCorrDz, const Int_t nRRow,  	const Int_t nZColumn, 	const Int_t phiSlice,	Double_t *rList,	 Double_t *phiList,  Double_t *zList );
 
-  void FillLookUpTable(AliTPCLookUpTable3DInterpolatorD* lookupGlobal, TMatrixD** lookupRDz, TMatrixD** lookupPhiRDz,
-                       TMatrixD** lookupDz, const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice,
-                       const Double_t* rList, const Double_t* phiList, const Double_t* zList);
+  void FillLookUpTable(AliTPCLookUpTable3DInterpolatorD *lookupGlobal, TMatrixD **lookupRDz, TMatrixD **lookupPhiRDz,
+                       TMatrixD **lookupDz, const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice,
+                       const Double_t *rList, const Double_t *phiList, const Double_t *zList);
 
-  Double_t InterpolatePhi(TH3* h3, const Double_t r, const Double_t phi, const Double_t z);
+  Double_t InterpolatePhi(TH3 *h3, const Double_t r, const Double_t phi, const Double_t z);
 
-  void InverseGlobalToLocalDistortionGlobalInvTable(TMatrixD** matricesDistDrDz, TMatrixD** matricesDistDPhiRDz,
-                                                    TMatrixD** matricesDistDz, Double_t* rList, Double_t* zList,
-                                                    Double_t* phiList, const Int_t nRRow, const Int_t nZColumn,
+  void InverseGlobalToLocalDistortionGlobalInvTable(TMatrixD **matricesDistDrDz, TMatrixD **matricesDistDPhiRDz,
+                                                    TMatrixD **matricesDistDz, Double_t *rList, Double_t *zList,
+                                                    Double_t *phiList, const Int_t nRRow, const Int_t nZColumn,
                                                     const Int_t phiSlice, const Int_t nStep, const Bool_t useCylAC,
                                                     Int_t stepR, Int_t stepZ, Int_t stepPhi, Int_t type);
 
-  void InverseLocalDistortionToElectricField(TMatrixD** matricesEr, TMatrixD** matricesEPhi, TMatrixD** matricesEz,
-                                             TMatrixD** matricesInvLocalIntErDz, TMatrixD** matricesInvLocalIntEPhiDz,
-                                             TMatrixD** matricesInvLocalIntEz, TMatrixD** matricesDistDrDz,
-                                             TMatrixD** matricesDistDPhiRDz, TMatrixD** matricesDistDz,
-                                             Double_t* rList, Double_t* zList, Double_t* phiList, const Int_t nRRow,
+  void InverseLocalDistortionToElectricField(TMatrixD **matricesEr, TMatrixD **matricesEPhi, TMatrixD **matricesEz,
+                                             TMatrixD **matricesInvLocalIntErDz, TMatrixD **matricesInvLocalIntEPhiDz,
+                                             TMatrixD **matricesInvLocalIntEz, TMatrixD **matricesDistDrDz,
+                                             TMatrixD **matricesDistDPhiRDz, TMatrixD **matricesDistDz,
+                                             Double_t *rList, Double_t *zList, Double_t *phiList, const Int_t nRRow,
                                              const Int_t nZColumn, const Int_t phiSlice);
 
-  void InverseElectricFieldToCharge(TMatrixD** matricesCharge, TMatrixD** matricesEr, TMatrixD** matricesEPhi,
-                                    TMatrixD** matricesEz, Double_t* rList, Double_t* zList, Double_t* phiList,
+  void InverseElectricFieldToCharge(TMatrixD **matricesCharge, TMatrixD **matricesEr, TMatrixD **matricesEPhi,
+                                    TMatrixD **matricesEz, Double_t *rList, Double_t *zList, Double_t *phiList,
                                     const Int_t nRRow, const Int_t nZColumn, const Int_t phiSlice);
 
-  void CalculateEField(TMatrixD** matricesV, TMatrixD** matricesErOverEz, TMatrixD** matricesEPhiOverEz,
-                       TMatrixD** matricesDeltaEz, const Int_t nRRow, const Int_t nZColumn, const Int_t nPhiSlice,
+  void CalculateEField(TMatrixD **matricesV, TMatrixD **matricesErOverEz, TMatrixD **matricesEPhiOverEz,
+                       TMatrixD **matricesDeltaEz, const Int_t nRRow, const Int_t nZColumn, const Int_t nPhiSlice,
                        const Int_t symmetry, Bool_t rocDisplacement = kFALSE);
 
   void
-    IntegrateEz(TMatrixD** matricesExOverEz, TMatrixD** matricesEx, const Int_t nRRow, const Int_t nZColumn,
-                const Int_t nPhiSlice, const Double_t ezField);
+  IntegrateEz(TMatrixD **matricesExOverEz, TMatrixD **matricesEx, const Int_t nRRow, const Int_t nZColumn,
+              const Int_t nPhiSlice, const Double_t ezField);
 
   void InitAllocateMemory();
 
-  /// \cond CLASSIMP
+/// \cond CLASSIMP
   ClassDef(AliTPCSpaceCharge3DCalc,
-           1);
-  /// \endcond
+  1);
+/// \endcond
 };
 
 #endif

@@ -138,7 +138,7 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
   TMatrixD **matricesCorrDrDzA,  TMatrixD **matricesCorrDPhiRDzA, TMatrixD **matricesCorrDzA,
   TMatrixD **matricesDistDrDzC,  TMatrixD **matricesDistDPhiRDzC, TMatrixD **matricesDistDzC,
   TMatrixD **matricesCorrDrDzC,  TMatrixD **matricesCorrDPhiRDzC, TMatrixD **matricesCorrDzC,
-  TFormula *intErDzTestFunction,  TFormula *intEPhiRDzTestFunction, TFormula *intDzTestFunction) {
+  TFormula *intErDzTestFunction,  TFormula *intEPhiRDzTestFunction, TFormula *intDzTestFunction, TFormula *ezFunction) {
   fSpaceCharge3DCalc.InitSpaceCharge3DPoissonIntegralDz(nRRow, nZColumn, phiSlice, maxIteration, stopConvergence,
     matricesErA, matricesEPhiA, matricesEzA,
     matricesErC, matricesEPhiC, matricesEzC,
@@ -146,7 +146,7 @@ void AliTPCSpaceCharge3DDriftLine::InitSpaceCharge3DPoissonIntegralDz(
     matricesCorrDrDzA,  matricesCorrDPhiRDzA, matricesCorrDzA,
     matricesDistDrDzC,  matricesDistDPhiRDzC, matricesDistDzC,
     matricesCorrDrDzC,  matricesCorrDPhiRDzC, matricesCorrDzC,
-    intErDzTestFunction, intEPhiRDzTestFunction, intDzTestFunction);
+    intErDzTestFunction, intEPhiRDzTestFunction, intDzTestFunction, ezFunction);
 }
 /// Creating look-up tables of Correction/Distortion by linear integration
 /// on z line
@@ -223,6 +223,13 @@ void AliTPCSpaceCharge3DDriftLine::GetCorrection(const Float_t x[], Short_t roc,
   fSpaceCharge3DCalc.GetCorrection(x, roc, dx);
 }
 ///
+/// \param x
+/// \param roc
+/// \param dx
+void AliTPCSpaceCharge3DDriftLine::GetCorrection(const Float_t x[], Short_t roc, Float_t dx[],const Int_t side) {
+  fSpaceCharge3DCalc.GetCorrection(x, roc, dx,side);
+}
+///
 /// \param z
 /// \param nx
 /// \param ny
@@ -238,6 +245,7 @@ TH2F *AliTPCSpaceCharge3DDriftLine::CreateHistogramDistDRInXY(Float_t z, Int_t n
                        "drDist [cm]",
                        nx, -250., 250., ny, -250., 250.);
   Float_t x[3], dx[3];
+  Float_t r0,r1;
   x[2] = z;
   Int_t roc = z > 0. ? 0 : 18; // FIXME
   for (Int_t iy = 1; iy <= ny; ++iy) {
@@ -277,6 +285,7 @@ TH2F *AliTPCSpaceCharge3DDriftLine::CreateHistogramCorrDRInXY
                        "drDist [cm]",
                        nx, -250., 250., ny, -250., 250.);
   Float_t x[3], dx[3];
+  Float_t r0,r1;
   x[2] = z;
   Int_t roc = z > 0. ? 0 : 18; // FIXME
   for (Int_t iy = 1; iy <= ny; ++iy) {
@@ -284,10 +293,10 @@ TH2F *AliTPCSpaceCharge3DDriftLine::CreateHistogramCorrDRInXY
     for (Int_t ix = 1; ix <= nx; ++ix) {
       x[0] = h->GetXaxis()->GetBinCenter(ix);
       GetCorrection(x, roc, dx);
-      Float_t r0 = TMath::Sqrt((x[0]) * (x[0]) + (x[1]) * (x[1]));
-      Float_t r1 = TMath::Sqrt((x[0] + dx[0]) * (x[0] + dx[0]) + (x[1] + dx[1]) * (x[1] + dx[1]));
+      r0 = TMath::Sqrt((x[0]) * (x[0]) + (x[1]) * (x[1]));
+      r1 = TMath::Sqrt((x[0] + dx[0]) * (x[0] + dx[0]) + (x[1] + dx[1]) * (x[1]+ dx[1]));
       if (tpcParam->GetPadRowRadii(0, 0) <= r0 && r0 <= tpcParam->GetPadRowRadii(36, 95)) {
-        h->SetBinContent(ix, iy, r1 - r0);
+        h->SetBinContent(ix, iy, r1-r0);
       } else
         h->SetBinContent(ix, iy, 0.);
     }
@@ -508,9 +517,14 @@ TTree *AliTPCSpaceCharge3DDriftLine::CreateDistortionTree(Double_t step) {
         xyz[1] = phi;
         xyz[2] = z;
 
+	
         GetLocalDistortionCyl(xyz, roc, localDist);
 
-        GetCorrection(xyzDist, roc, corr);
+	if (z >= 0)	
+        	GetCorrection(xyzDist, roc, corr,0);
+	else
+        	GetCorrection(xyzDist, roc, corr,1);
+
 
         for (Int_t i = 0; i < 3; ++i) {
           xyzCorr[i] = xyzDist[i] + corr[i];
@@ -648,8 +662,6 @@ TTree *AliTPCSpaceCharge3DDriftLine::CreateDistortionTree(const Int_t nRRowTest,
 
           phi0 = m * dPhi;
           r0 = ifcRadius + (dRadius * i);
-          Double_t x0 = r0 * std::cos(phi0);
-          Double_t y0 = r0 * std::sin(phi0);
           z0 = dZ * j;
           if (side == 1) z0 = -1*z0;
           charge = GetSpaceChargeDensity(r0, phi0, z0);
@@ -696,9 +708,6 @@ TTree *AliTPCSpaceCharge3DDriftLine::CreateDistortionTree(const Int_t nRRowTest,
           dzCorr = corr[2];
 
           (*pcStream) << "distortion" <<
-                      "side=" << side <<
-                      "x=" << x0 <<
-                      "y=" << y0 <<
                       "z=" << z0 <<
                       "r=" << r0 <<
                       "phi=" << phi0 <<
@@ -727,6 +736,7 @@ TTree *AliTPCSpaceCharge3DDriftLine::CreateDistortionTree(const Int_t nRRowTest,
     }
   }
   delete pcStream;
+  Info("AliTPCSpaceCharge3DDriftLine::CreateDistortionTree","%s",Form("Distortion Tree Dump (%d,%d,%d), file name: distortion%s.root\n", nRRowTest,nZColTest,nPhiSliceTest,GetName()));
   TFile f(Form("distortion%s.root", GetName()));
   TTree *tree = (TTree *) f.Get("distortion");
 

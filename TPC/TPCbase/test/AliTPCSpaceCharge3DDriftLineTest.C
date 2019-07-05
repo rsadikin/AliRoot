@@ -41,7 +41,7 @@ const Double_t gkMaxEpsilon = 1e-2;
 // TODO: Move the helper classes to AliTPCSpaceCharge3DDriftLine
 // helper class
 void
-LocalDistCorrDzExact(TFormula *intDrDzF, TFormula *intDPhiDzF, TFormula *intDzDzF, Double_t *rList, Double_t *phiList,
+LocalDistCorrDzExact(TFormula *intDrDzF, TFormula *intDPhiDzF, TFormula *intDzDzF, TFormula *ezF, Double_t *rList, Double_t *phiList,
                      Double_t *zList, TMatrixD **matricesDistDrDz, TMatrixD **matricesDistDPhiRDz,
                      TMatrixD **matricesDistDz, TMatrixD **matricesCorrDrDz, TMatrixD **matricesCorrDPhiRDz,
                      TMatrixD **matricesCorrDz, const Int_t rRow, const Int_t zColumn, const Int_t phiSlice,
@@ -67,11 +67,12 @@ void AliTPCSpaceCharge3DDriftLineTest() {
   Int_t phiSliceList[] = {18,36,72,144,288};
   Int_t rRow, zColumn, phiSlice;
   const Int_t numberExperiment = 1;
-  Int_t rRowTest = 50;
-  Int_t zColumnTest = 50;
-  Int_t phiSliceTest = 50;
+  Int_t rRowTest = 10;
+  Int_t zColumnTest = 10;
+  Int_t phiSliceTest = 10;
   Int_t nPoint =rRowTest * zColumnTest * phiSliceTest;
 
+  Int_t correctionType = 1; // only work for irregular interpolation
   TTreeSRedirector *pcStream = new TTreeSRedirector("spaceChargeDriftLinePerformance.root","RECREATE");
 
 
@@ -79,8 +80,7 @@ void AliTPCSpaceCharge3DDriftLineTest() {
     rRow = rRowList[iExperiment];
     zColumn = zColumnList[iExperiment];
     phiSlice = phiSliceList[iExperiment];
-    UnitTestCorrectnessDistortion(rRow, zColumn, phiSlice, rRowTest, zColumnTest, phiSliceTest, 0,  pcStream); // regular
-    UnitTestCorrectnessDistortion(rRow, zColumn, phiSlice, rRowTest, zColumnTest, phiSliceTest, 1,  pcStream); // irregular
+    UnitTestCorrectnessDistortion(rRow, zColumn, phiSlice, rRowTest, zColumnTest, phiSliceTest, correctionType,  pcStream); // irregular
   }
 
   delete pcStream;
@@ -107,21 +107,21 @@ void UnitTestCorrectnessDistortion(const Int_t rRow,const  Int_t zColumn, const 
   AliTPCSpaceCharge3DDriftLine *scExact = new AliTPCSpaceCharge3DDriftLine(TString::Format("unitTestExact%d-%d-%d-%d",correctionType,rRow,zColumn,phiSlice).Data(), "unitTestExact", rRow, zColumn, phiSlice);
 
   
-  TFormula vTestFunction1("f1", "[0]*(x^4 - 338.0 *x^3 + 21250.75 * x^2)*cos([1]* y)^2*exp(-1* [2] * z^2)");
-  TFormula rhoTestFunction1("ff1", "[0]*(((16.0 * x^2 - 9.0 * 338.0 * x + 4.0*21250.75) *cos([1] * y)^2 * exp(-1 *[2]*z^2)) - ((x^2 -  338.0 * x + 21250.75) * 2 * [1]^2 * cos(2 * [1] * y) * exp(-1 *[2]*z^2)) + ((x^4 -  338.0 * x^3 + 21250.75 * x^2) * cos([1] * y)^2 * (4*[2]^2*z^2 - 2 * [2]) * exp(-1 *[2]*z^2)))");
+  TFormula vTestFunction1("f1", "-1 * ([0]*(x^4 - 338.0 *x^3 + 21250.75 * x^2)*cos([1]* y)^2*exp(-1* [2] * z^2))");
+  TFormula rhoTestFunction1("ff1", "-1 * [0]*(((16.0 * x^2 - 9.0 * 338.0 * x + 4.0*21250.75) *cos([1] * y)^2 * exp(-1 *[2]*z^2)) - ((x^2 -  338.0 * x + 21250.75) * 2 * [1]^2 * cos(2 * [1] * y) * exp(-1 *[2]*z^2)) + ((x^4 -  338.0 * x^3 + 21250.75 * x^2) * cos([1] * y)^2 * (4*[2]^2*z^2 - 2 * [2]) * exp(-1 *[2]*z^2)))");
 
-  TFormula erTestFunction1("er", " [0]*(4*x^3 - 3 * 338.0 *x^2 + 2 * 21250.75 * x)*cos([1]* y)^2*exp(-1* [2] * z^2)");
+  TFormula erTestFunction1("er", " -1* [0]*(4*x^3 - 3 * 338.0 *x^2 + 2 * 21250.75 * x)*cos([1]* y)^2*exp(-1* [2] * z^2)");
   TFormula ePhiTestFunction1("ePhi",
-                            "  [0]*(x^3 - 338.0 *x^2 +  21250.75 * x)* -1  * [1] * sin(2 * [1]* y)*exp(-1* [2] * z^2)");
+                            "  -1 * [0]*(x^3 - 338.0 *x^2 +  21250.75 * x)* -1  * [1] * sin(2 * [1]* y)*exp(-1* [2] * z^2)");
   TFormula ezTestFunction1("ez",
-                          " [0]*(x^4 - 338.0 *x^3 + 21250.75 * x^2)*cos([1]* y)^2*-1*2*[2]*z*exp(-1* [2] * z^2)");
+                          " -1 *[0]*(x^4 - 338.0 *x^3 + 21250.75 * x^2)*cos([1]* y)^2*-1*2*[2]*z*exp(-1* [2] * z^2)");
 
   TFormula intErDzTestFunction1("intErDz",
-                               " [0]*(4*x^3 - 3 * 338.0 *x^2 + 2 * 21250.75 * x)*cos([1]* y)^2*((sqrt(pi)*TMath::Erf(sqrt([2]) * z))/(2 * sqrt([2]))) ");
+                               " -1* [0]*(4*x^3 - 3 * 338.0 *x^2 + 2 * 21250.75 * x)*cos([1]* y)^2*((sqrt(pi)*TMath::Erf(sqrt([2]) * z))/(2 * sqrt([2]))) ");
   TFormula intEPhiRDzTestFunction1("intEPhiDz",
-                                  "[0]* (x^3 - 338.0 *x^2 +  21250.75 * x)* -1  * [1] * sin(2 * [1]* y)*((sqrt(pi)*TMath::Erf(sqrt([2]) * z))/(2 * sqrt([2])))");
+                                  "-1 * [0]* (x^3 - 338.0 *x^2 +  21250.75 * x)* -1  * [1] * sin(2 * [1]* y)*((sqrt(pi)*TMath::Erf(sqrt([2]) * z))/(2 * sqrt([2])))");
   TFormula intDzTestFunction1("intEzDz",
-                             "[0]* (x^4 - 338.0 *x^3 + 21250.75 * x^2)*cos([1]* y)^2*exp(-1* [2] * z^2)");
+                             "-1 * [0]* (x^4 - 338.0 *x^3 + 21250.75 * x^2)*cos([1]* y)^2*exp(-1* [2] * z^2)");
 
 
   // set parameters for function
@@ -177,16 +177,11 @@ void UnitTestCorrectnessDistortion(const Int_t rRow,const  Int_t zColumn, const 
   sc->SetElectricFieldFormula(erTestFunction,ePhiTestFunction,ezTestFunction);
   sc->SetCorrectionType(correctionType);
   sc->SetOmegaTauT1T2(-0.35, 1., 1.);
-
-  if (correctionType == 0) {
-	  scExact->SetPotentialBoundaryAndChargeFormula(vTestFunction, rhoTestFunction);
-	  scExact->SetElectricFieldFormula(erTestFunction,ePhiTestFunction,ezTestFunction);
-	  scExact->SetCorrectionType(correctionType);
-	  scExact->SetOmegaTauT1T2(-0.35, 1., 1.);
+  scExact->SetPotentialBoundaryAndChargeFormula(vTestFunction, rhoTestFunction);
+  scExact->SetElectricFieldFormula(erTestFunction,ePhiTestFunction,ezTestFunction);
+  scExact->SetCorrectionType(correctionType);
+  scExact->SetOmegaTauT1T2(-0.35, 1., 1.);
   
-  	 // 	Float_t c0 = scExact->GetC0();
-	 //      Float_t c1 = scExact->GetC1();
-  }
   Float_t c0 = sc->GetC0();
   Float_t c1 = sc->GetC1();
 
@@ -246,38 +241,33 @@ void UnitTestCorrectnessDistortion(const Int_t rRow,const  Int_t zColumn, const 
     matricesEzExactC[m] = new TMatrixD(rRow, zColumn);
   }
 
-  if (correctionType == 0) {
-	  InitPotentialAndCharge3D(vTestFunction, rhoTestFunction, erTestFunction, ePhiTestFunction, ezTestFunction,
+  InitPotentialAndCharge3D(vTestFunction, rhoTestFunction, erTestFunction, ePhiTestFunction, ezTestFunction,
                       intErDzTestFunction, intEPhiRDzTestFunction, intDzTestFunction, matricesVExactA,
                       matricesChargeA, matricesErExactA, matricesEPhiExactA, matricesEzExactA, matricesDistDrDzExactA,
                       matricesDistDPhiRDzExactA, matricesDistDzExactA, matricesCorrDrDzExactA,
                       matricesCorrDPhiRDzExactA, matricesCorrDzExactA, rRow, zColumn, phiSlice, 0, c0, c1, ezField,
                       dvdE);
-
-	  InitPotentialAndCharge3D(vTestFunction, rhoTestFunction, erTestFunction, ePhiTestFunction, ezTestFunction,
+  InitPotentialAndCharge3D(vTestFunction, rhoTestFunction, erTestFunction, ePhiTestFunction, ezTestFunction,
                       intErDzTestFunction, intEPhiRDzTestFunction, intDzTestFunction, matricesVExactC,
                       matricesChargeC, matricesErExactC, matricesEPhiExactC, matricesEzExactC, matricesDistDrDzExactC,
                       matricesDistDPhiRDzExactC, matricesDistDzExactC, matricesCorrDrDzExactC,
                       matricesCorrDPhiRDzExactC, matricesCorrDzExactC, rRow, zColumn, phiSlice, 1, c0, c1, ezField,
                       dvdE);
 
-	  scExact->InitSpaceCharge3DPoissonIntegralDz(rRow, zColumn, phiSlice, maxIter, convergenceError,
-                                              matricesErExactA, matricesEPhiExactA, matricesEzExactA,
+  scExact->InitSpaceCharge3DPoissonIntegralDz(rRow, zColumn, phiSlice, maxIter, convergenceError,
+                      matricesErExactA, matricesEPhiExactA, matricesEzExactA,
                                               matricesErExactC, matricesEPhiExactC, matricesEzExactC,
                                               matricesDistDrDzExactA, matricesDistDPhiRDzExactA, matricesDistDzExactA,
                                                                                                                                                                                                                                                                                         matricesCorrDrDzExactA, matricesCorrDPhiRDzExactA, matricesCorrDzExactA,
                                               matricesDistDrDzExactC, matricesDistDPhiRDzExactC, matricesDistDzExactC,
                                               matricesCorrDrDzExactC, matricesCorrDPhiRDzExactC, matricesCorrDzExactC,
-                                              intErDzTestFunction, intEPhiRDzTestFunction, intDzTestFunction);
+                                              intErDzTestFunction, intEPhiRDzTestFunction, intDzTestFunction,ezTestFunction);
 
-  }
   printf("creating distortion tree for sc\n");
   sc->CreateDistortionTree(rRowTest,zColumnTest,phiSliceTest);
 
-  if (correctionType == 0) {
-	  printf("creating distortion tree for scExact\n");
-	  scExact->CreateDistortionTree(rRowTest,zColumnTest,phiSliceTest);
-  }
+  printf("creating distortion tree for scExact\n");
+  scExact->CreateDistortionTree(rRowTest,zColumnTest,phiSliceTest);
 
 
 
@@ -317,33 +307,32 @@ void UnitTestCorrectnessDistortion(const Int_t rRow,const  Int_t zColumn, const 
   WriteErrorToPCStream(0,rRow,zColumn,phiSlice,rRowTest,zColumnTest,phiSliceTest,correctionType,varNameId++,errorList,oldIndexErrorList,pcStream);
   oldIndexErrorList = indexErrorList;
 
-  if (correctionType == 0) {
-	  GetResidueFromDistortionAnalyticTree(0,TString::Format("distortion%s.root",sc->GetName()).Data(),TString::Format("distortion%s.root",scExact->GetName()),"drLocalDist",errorList,indexErrorList, pcStream);
-	  WriteErrorToPCStream(0,rRow,zColumn,phiSlice,rRowTest,zColumnTest,phiSliceTest,correctionType,varNameId++,errorList,oldIndexErrorList,pcStream);
-	  oldIndexErrorList = indexErrorList;
+  GetResidueFromDistortionAnalyticTree(0,TString::Format("distortion%s.root",sc->GetName()).Data(),TString::Format("distortion%s.root",scExact->GetName()),"drLocalDist",errorList,indexErrorList, pcStream);
+  WriteErrorToPCStream(0,rRow,zColumn,phiSlice,rRowTest,zColumnTest,phiSliceTest,correctionType,varNameId++,errorList,oldIndexErrorList,pcStream);
+  oldIndexErrorList = indexErrorList;
 
-	  GetResidueFromDistortionAnalyticTree(0,TString::Format("distortion%s.root",sc->GetName()).Data(),TString::Format("distortion%s.root",scExact->GetName()),"drPhiLocalDist",errorList,indexErrorList, pcStream);
-	  WriteErrorToPCStream(0,rRow,zColumn,phiSlice,rRowTest,zColumnTest,phiSliceTest,correctionType,varNameId++,errorList,oldIndexErrorList,pcStream);
-	  oldIndexErrorList = indexErrorList;
+  GetResidueFromDistortionAnalyticTree(0,TString::Format("distortion%s.root",sc->GetName()).Data(),TString::Format("distortion%s.root",scExact->GetName()),"drPhiLocalDist",errorList,indexErrorList, pcStream);
+  WriteErrorToPCStream(0,rRow,zColumn,phiSlice,rRowTest,zColumnTest,phiSliceTest,correctionType,varNameId++,errorList,oldIndexErrorList,pcStream);
+  oldIndexErrorList = indexErrorList;
+  
+  GetResidueFromDistortionAnalyticTree(0,TString::Format("distortion%s.root",sc->GetName()).Data(),TString::Format("distortion%s.root",scExact->GetName()),"dzLocalDist",errorList,indexErrorList, pcStream);
+  WriteErrorToPCStream(0,rRow,zColumn,phiSlice,rRowTest,zColumnTest,phiSliceTest,correctionType,varNameId++,errorList,oldIndexErrorList,pcStream);
+  oldIndexErrorList = indexErrorList;
+	  
+  GetResidueFromDistortionAnalyticTree(0,TString::Format("distortion%s.root",sc->GetName()).Data(),TString::Format("distortion%s.root",scExact->GetName()),"drDist",errorList,indexErrorList, pcStream);
+  WriteErrorToPCStream(0,rRow,zColumn,phiSlice,rRowTest,zColumnTest,phiSliceTest,correctionType,varNameId++,errorList,oldIndexErrorList,pcStream);
+  oldIndexErrorList = indexErrorList;
+ 
+  GetResidueFromDistortionAnalyticTree(0,TString::Format("distortion%s.root",sc->GetName()).Data(),TString::Format("distortion%s.root",scExact->GetName()),"drPhiDist",errorList,indexErrorList, pcStream);
+  WriteErrorToPCStream(0,rRow,zColumn,phiSlice,rRowTest,zColumnTest,phiSliceTest,correctionType,varNameId++,errorList,oldIndexErrorList,pcStream);
+  oldIndexErrorList = indexErrorList;
 
-	  GetResidueFromDistortionAnalyticTree(0,TString::Format("distortion%s.root",sc->GetName()).Data(),TString::Format("distortion%s.root",scExact->GetName()),"dzLocalDist",errorList,indexErrorList, pcStream);
-	  WriteErrorToPCStream(0,rRow,zColumn,phiSlice,rRowTest,zColumnTest,phiSliceTest,correctionType,varNameId++,errorList,oldIndexErrorList,pcStream);
-	  oldIndexErrorList = indexErrorList;
-
-	  GetResidueFromDistortionAnalyticTree(0,TString::Format("distortion%s.root",sc->GetName()).Data(),TString::Format("distortion%s.root",scExact->GetName()),"drDist",errorList,indexErrorList, pcStream);
-	  WriteErrorToPCStream(0,rRow,zColumn,phiSlice,rRowTest,zColumnTest,phiSliceTest,correctionType,varNameId++,errorList,oldIndexErrorList,pcStream);
-	  oldIndexErrorList = indexErrorList;
-
-	  GetResidueFromDistortionAnalyticTree(0,TString::Format("distortion%s.root",sc->GetName()).Data(),TString::Format("distortion%s.root",scExact->GetName()),"drPhiDist",errorList,indexErrorList, pcStream);
-	  WriteErrorToPCStream(0,rRow,zColumn,phiSlice,rRowTest,zColumnTest,phiSliceTest,correctionType,varNameId++,errorList,oldIndexErrorList,pcStream);
-	  oldIndexErrorList = indexErrorList;
-
-	  GetResidueFromDistortionAnalyticTree(0,TString::Format("distortion%s.root",sc->GetName()).Data(),TString::Format("distortion%s.root",scExact->GetName()),"dzDist",errorList,indexErrorList, pcStream);
-	  WriteErrorToPCStream(0,rRow,zColumn,phiSlice,rRowTest,zColumnTest,phiSliceTest,correctionType,varNameId++,errorList,oldIndexErrorList,pcStream);
-	  oldIndexErrorList = indexErrorList;
-  } else {
-          varNameId += 6;
-  }
+  GetResidueFromDistortionAnalyticTree(0,TString::Format("distortion%s.root",sc->GetName()).Data(),TString::Format("distortion%s.root",scExact->GetName()),"dzDist",errorList,indexErrorList, pcStream);
+  WriteErrorToPCStream(0,rRow,zColumn,phiSlice,rRowTest,zColumnTest,phiSliceTest,correctionType,varNameId++,errorList,oldIndexErrorList,pcStream);
+  oldIndexErrorList = indexErrorList;
+  // } else {
+  //       varNameId += 6;
+  //}
 
   printf("\n\n");
   printf("================= Consistency testing  (distortion - correction) ============================\n");
@@ -425,7 +414,7 @@ void UnitTestConsistencyDistortionZShort(const Int_t rRow, const Int_t zColumn, 
     ::Info("AliTPCSpaceCharge3DDriftLineTest::UnitTestConsistencyDistortionZShort", "Irregular interpolation");
 
   // set potential boundary in V
-  TF1 * potentialBoundaryFunctionInZ = new TF1("dFunctionVZ", dFunctionVZ, -250.0, 250.0,2);
+  TF2 * potentialBoundaryFunctionInZ = new TF2("dFunctionVZ", dFunctionVZ, -250.0, 250.0,2);
   potentialBoundaryFunctionInZ->SetParName(0,"zShort");
   potentialBoundaryFunctionInZ->SetParName(1,"amplitude");
   potentialBoundaryFunctionInZ->SetParameter(0,zShort);
@@ -581,7 +570,7 @@ void InitPotentialAndCharge3D(TFormula *vTestFunction, TFormula *rhoTestFunction
   } // end phi
 
 
-  LocalDistCorrDzExact(intErDzTestFunction, intEPhiRDzTestFunction, intDzTestFunction, rList, phiList, zedList,
+  LocalDistCorrDzExact(intErDzTestFunction, intEPhiRDzTestFunction, intDzTestFunction, ezTestFunction, rList, phiList, zedList,
                        matricesDistDrDz, matricesDistDPhiRDz, matricesDistDz, matricesCorrDrDz, matricesCorrDPhiRDz,
                        matricesCorrDz, rRow, zColumn, phiSlice, c0, c1, ezField, dvdE, side);
 }
@@ -609,7 +598,7 @@ void InitPotentialAndCharge3D(TFormula *vTestFunction, TFormula *rhoTestFunction
 /// \param dvdE
 /// \param side
 void
-LocalDistCorrDzExact(TFormula *intDrDzF, TFormula *intDPhiDzF, TFormula *intDzDzF, Double_t *rList, Double_t *phiList,
+LocalDistCorrDzExact(TFormula *intDrDzF, TFormula *intDPhiDzF, TFormula *intDzDzF, TFormula *ezF,  Double_t *rList, Double_t *phiList,
                      Double_t *zList, TMatrixD **matricesDistDrDz, TMatrixD **matricesDistDPhiRDz,
                      TMatrixD **matricesDistDz, TMatrixD **matricesCorrDrDz, TMatrixD **matricesCorrDPhiRDz,
                      TMatrixD **matricesCorrDz, const Int_t rRow, const Int_t zColumn, const Int_t phiSlice,
@@ -670,18 +659,18 @@ LocalDistCorrDzExact(TFormula *intDrDzF, TFormula *intDPhiDzF, TFormula *intDzDz
         r0 = rList[i];
 
         if (side == 0) {
-          localIntErOverEz = (intDrDzF->Eval(r0, phi0, z1) - intDrDzF->Eval(r0, phi0, z0)) / (-1 * ezField);
-          localIntEPhiOverEz = (intDPhiDzF->Eval(r0, phi0, z1) - intDPhiDzF->Eval(r0, phi0, z0)) / (-1 * ezField);
+          localIntErOverEz = (intDrDzF->Eval(r0, phi0, z1) - intDrDzF->Eval(r0, phi0, z0)) / (ezField + ezF->Eval(r0,phi0,z0));
+          localIntEPhiOverEz = (intDPhiDzF->Eval(r0, phi0, z1) - intDPhiDzF->Eval(r0, phi0, z0)) / (ezField  + ezF->Eval(r0,phi0,z0));
           localIntDeltaEz = intDzDzF->Eval(r0, phi0, z1) - intDzDzF->Eval(r0, phi0, z0);
         } else {
-          localIntErOverEz = (intDrDzF->Eval(r0, phi0, z1) - intDrDzF->Eval(r0, phi0, z0)) / (-1 * ezField);
-          localIntEPhiOverEz = (intDPhiDzF->Eval(r0, phi0, z1) - intDPhiDzF->Eval(r0, phi0, z0)) / (-1 * ezField);
+          localIntErOverEz = (intDrDzF->Eval(r0, phi0, z1) - intDrDzF->Eval(r0, phi0, z0)) / (ezField + ezF->Eval(r0,phi0,z0));
+          localIntEPhiOverEz = (intDPhiDzF->Eval(r0, phi0, z1) - intDPhiDzF->Eval(r0, phi0, z0)) / (ezField  + ezF->Eval(r0,phi0,z0));
           localIntDeltaEz = intDzDzF->Eval(r0, phi0, z1) - intDzDzF->Eval(r0, phi0, z0);
         }
 
         (*distDrDz)(i, j) = c0 * localIntErOverEz + c1 * localIntEPhiOverEz;
         (*distDPhiRDz)(i, j) = c0 * localIntEPhiOverEz - c1 * localIntErOverEz;
-        (*distDz)(i, j) = localIntDeltaEz * dvdE * dvdE; // two times?
+        (*distDz)(i, j) = -1 *  localIntDeltaEz * dvdE ; // two times?
 
 
         (*corrDrDz)(i, j + 1) = -1 * (*distDrDz)(i, j);
